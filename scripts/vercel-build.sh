@@ -9,15 +9,15 @@ set -euo pipefail
 
 # ── 1. Rust / wasm-pack ───────────────────────────────────────────────────────
 
-if ! command -v cargo &>/dev/null; then
-  echo "[build] Installing Rust..."
+if ! command -v cargo &>/dev/null || ! command -v rustup &>/dev/null; then
+  echo "[build] Installing Rust via rustup..."
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
     | sh -s -- -y --default-toolchain stable --target wasm32-unknown-unknown
   # shellcheck source=/dev/null
   source "$HOME/.cargo/env"
 else
   echo "[build] Rust already present: $(rustc --version)"
-  rustup target add wasm32-unknown-unknown --toolchain stable 2>/dev/null || true
+  rustup target add wasm32-unknown-unknown
 fi
 
 if ! command -v wasm-pack &>/dev/null; then
