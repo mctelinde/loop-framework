@@ -1,0 +1,22 @@
+[workspace]
+members = [
+    "crates/lf-engine",
+    "crates/lf-wasm",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Loop Framework Contributors"]
+license = "MIT"
+
+[profile.release]
+opt-level = 3
+lto = true
+
+# Optimised WASM release: minimise binary size
+[profile.release-wasm]
+inherits = "release"
+opt-level = "z"
+lto = true

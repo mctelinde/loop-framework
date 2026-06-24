@@ -1,0 +1,15 @@
+[package]
+name = "lf-engine"
+version.workspace = true
+edition.workspace = true
+description = "Core audio engine for Loop Framework (no platform I/O)"
+
+[dependencies]
+# Audio format decoding
+symphonia = { version = "0.5", features = ["mp3", "ogg", "wav", "aac"] }
+
+# WAV I/O (lightweight, for simple WAV encode/decode)
+hound = "3.5"
+
+# Error handling
+thiserror = "2"
