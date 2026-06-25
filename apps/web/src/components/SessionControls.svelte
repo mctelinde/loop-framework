@@ -143,6 +143,8 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    flex-wrap: wrap;
+    min-width: 0;
   }
 
   .session-name {
@@ -155,6 +157,15 @@
     padding: 0.25rem 0.5rem;
     transition: border-color 0.1s;
   }
+
+  @media (max-width: 640px) {
+    .session-name {
+      width: 80px;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.3rem;
+    }
+  }
+
   .session-name:focus { outline: none; border-color: #555; color: #fff; }
   .session-name::placeholder { color: #444; }
 
@@ -172,6 +183,19 @@
     white-space: nowrap;
     user-select: none;
     transition: background 0.1s, color 0.1s;
+  }
+
+  @media (max-width: 640px) {
+    .ctrl-btn {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.65rem;
+      gap: 0.2rem;
+    }
+
+    .ctrl-btn svg {
+      width: 10px;
+      height: 10px;
+    }
   }
 
   .ctrl-btn:hover:not(:disabled) { background: #2a2a2a; color: #fff; }
@@ -236,6 +260,14 @@
     border-bottom: 1px solid #2a3050;
     font-size: 0.75rem;
     color: #8899cc;
+  }
+
+  @media (max-width: 640px) {
+    .autosave-banner {
+      gap: 0.5rem;
+      padding: 0.3rem 1rem;
+      flex-wrap: wrap;
+    }
   }
 
   .banner-dismiss {

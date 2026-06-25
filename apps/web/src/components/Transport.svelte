@@ -141,6 +141,14 @@
     background: #181818;
     border-bottom: 1px solid #2a2a2a;
     flex-wrap: wrap;
+    overflow-x: hidden;
+  }
+
+  @media (max-width: 640px) {
+    .transport {
+      padding: 0.4rem 1rem;
+      gap: 0.5rem;
+    }
   }
 
   .divider {
@@ -168,6 +176,14 @@
     font-size: 0.8rem;
     cursor: pointer;
     transition: background 0.1s, color 0.1s;
+  }
+
+  @media (max-width: 640px) {
+    .btn {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.65rem;
+      gap: 0.2rem;
+    }
   }
 
   .btn:hover:not(:disabled) { background: #2e2e2e; color: #fff; }
@@ -217,7 +233,17 @@
     user-select: none;
   }
 
-  .bpm-display:hover { border-color: #555; }
+  @media (max-width: 640px) {
+    .bpm-display {
+      min-width: 2.5rem;
+      font-size: 0.9rem;
+      padding: 0.15rem 0.3rem;
+    }
+
+    .label {
+      font-size: 0.6rem;
+    }
+  }
 
   .bpm-input {
     width: 3.6rem;
@@ -250,6 +276,15 @@
     cursor: pointer;
     user-select: none;
   }
+
+  @media (max-width: 640px) {
+    .adj-btn {
+      width: 1.2rem;
+      height: 1.2rem;
+      font-size: 0.8rem;
+    }
+  }
+
   .adj-btn:hover { background: #2e2e2e; color: #fff; }
   .adj-btn:active { background: #1a1a1a; }
 
@@ -261,6 +296,13 @@
     color: #4caf50;
   }
   .tap-btn:hover { background: #243024; color: #66bb6a; }
+
+  @media (max-width: 640px) {
+    .tap-btn {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.6rem;
+    }
+  }
 
   /* ── Time sig ── */
   .timesig-control {
@@ -285,6 +327,14 @@
     cursor: pointer;
     transition: all 0.1s;
   }
+
+  @media (max-width: 640px) {
+    .timesig-btn {
+      padding: 0.2rem 0.35rem;
+      font-size: 0.65rem;
+    }
+  }
+
   .timesig-btn:hover { background: #2a2a2a; color: #ccc; }
   .timesig-btn.active {
     background: #1a2a3a;
