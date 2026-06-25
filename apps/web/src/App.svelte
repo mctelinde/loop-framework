@@ -103,6 +103,9 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .app-header {
@@ -112,9 +115,18 @@
     padding: 0.75rem 1.5rem;
     background: #1a1a1a;
     border-bottom: 1px solid #2a2a2a;
+    flex-wrap: wrap;
+    overflow-x: hidden;
   }
 
-  .header-spacer { flex: 1; }
+  @media (max-width: 640px) {
+    .app-header {
+      padding: 0.5rem 1rem;
+      gap: 0.5rem;
+    }
+  }
+
+  .header-spacer { flex: 1; min-width: 0; }
 
   h1 {
     font-size: 1.1rem;
@@ -124,10 +136,23 @@
     color: #fff;
   }
 
+  @media (max-width: 640px) {
+    h1 {
+      font-size: 0.9rem;
+    }
+  }
+
   .status {
     font-size: 0.75rem;
     padding: 0.2rem 0.6rem;
     border-radius: 999px;
+  }
+
+  @media (max-width: 640px) {
+    .status {
+      font-size: 0.6rem;
+      padding: 0.15rem 0.4rem;
+    }
   }
 
   .status.loading {
