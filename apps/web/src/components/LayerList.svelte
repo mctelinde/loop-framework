@@ -1,5 +1,6 @@
 <script lang="ts">
   import { layers, addLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
+  import { MicRecorder, type RecordingState } from '../lib/micRecorder';
 
   // ── File validation ────────────────────────────────────────────────────────
 
@@ -15,6 +16,53 @@
   // ── Error state ────────────────────────────────────────────────────────────
 
   let addError = $state<string | null>(null);
+
+  // ── Microphone recording ───────────────────────────────────────────────────
+
+  let micRecorder: MicRecorder | null = null;
+  let recordingState = $state<RecordingState>({ isRecording: false, duration: 0 });
+  let recordingError = $state<string | null>(null);
+
+  const MAX_RECORDING_DURATION = 30; // seconds
+
+  async function startRecording() {
+    recordingError = null;
+    try {
+      micRecorder = new MicRecorder((state) => {
+        recordingState = state;
+      });
+      await micRecorder.startRecording(MAX_RECORDING_DURATION);
+    } catch (err) {
+      recordingError = `${err}`;
+      micRecorder = null;
+    }
+  }
+
+  async function stopRecording() {
+    if (!micRecorder) return;
+    try {
+      const wavBlob = micRecorder.stopRecording();
+      micRecorder = null;
+
+      // Convert blob to File for addLayer()
+      const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' });
+      await addLayer(file);
+    } catch (err) {
+      recordingError = `Failed to save recording: ${err}`;
+    }
+  }
+
+  function cancelRecording() {
+    if (!micRecorder) return;
+    micRecorder.cancelRecording();
+    micRecorder = null;
+  }
+
+  function formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
 
   async function importFiles(files: File[], insertAt?: number) {
     addError = null;
@@ -170,21 +218,40 @@
         </span>
       {/if}
     </span>
-    <label class="add-btn" title="Add audio file">
-      + Add
-      <input
-        type="file"
-        accept=".wav,.mp3,.ogg,audio/*"
-        multiple
-        onchange={onFileInput}
-        class="visually-hidden"
-      />
-    </label>
+    <div class="header-buttons">
+      {#if recordingState.isRecording}
+        <button class="record-btn recording" disabled title="Recording">
+          ● REC {formatTime(recordingState.duration)}
+        </button>
+        <button class="stop-btn" onclick={stopRecording} title="Stop recording">⏹</button>
+        <button class="cancel-btn" onclick={cancelRecording} title="Cancel recording">✕</button>
+      {:else}
+        <button class="record-btn" onclick={startRecording} title="Record from microphone">
+          ◐ Rec
+        </button>
+        <label class="add-btn" title="Add audio file">
+          + Add
+          <input
+            type="file"
+            accept=".wav,.mp3,.ogg,audio/*"
+            multiple
+            onchange={onFileInput}
+            class="visually-hidden"
+          />
+        </label>
+      {/if}
+    </div>
   </div>
 
   {#if addError}
     <p class="error-banner" role="alert">{addError}
       <button class="dismiss" onclick={() => (addError = null)}>✕</button>
+    </p>
+  {/if}
+
+  {#if recordingError}
+    <p class="error-banner" role="alert">{recordingError}
+      <button class="dismiss" onclick={() => (recordingError = null)}>✕</button>
     </p>
   {/if}
 
@@ -294,6 +361,75 @@
     user-select: none;
   }
   .add-btn:hover { background: #243024; color: #66bb6a; }
+
+  .header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .record-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    background: #2a1515;
+    border: 1px solid #4a2e2e;
+    border-radius: 4px;
+    color: #ef5350;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .record-btn:hover:not(:disabled) {
+    background: #302020;
+    color: #ff7675;
+  }
+
+  .record-btn.recording {
+    background: #e53935;
+    color: #fff;
+    animation: pulse 0.6s ease-in-out infinite;
+  }
+
+  .record-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.8;
+  }
+
+  .stop-btn {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    background: #4caf50;
+    border: 1px solid #45a049;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .stop-btn:hover {
+    background: #66bb6a;
+  }
+
+  .cancel-btn {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    background: #555;
+    border: 1px solid #777;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .cancel-btn:hover {
+    background: #666;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
 
   .visually-hidden {
     position: absolute;
