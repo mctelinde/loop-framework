@@ -44,6 +44,9 @@ export class EngineController {
   private pendingRequests = new Map<number, PendingRequest>();
   private nextRequestId = 0;
 
+  /** Set when the worklet reports an unrecoverable error (e.g. WASM load failure). */
+  private fatalError: Error | null = null;
+
   constructor(context: AudioContext) {
     this.context = context;
   }
@@ -60,12 +63,19 @@ export class EngineController {
     processorUrl = '/lf-engine-processor.js',
     wasmUrl = '/wasm/lf_wasm_bg.wasm',
   ): Promise<void> {
+    // Compile WASM on the main thread. WebAssembly.Module is structured-cloneable
+    // and can be passed directly to the worklet via processorOptions, allowing the
+    // processor to use initSync() instead of dynamic import() (which Chrome disallows
+    // in AudioWorkletGlobalScope as of Chrome 128+).
+    const wasmBytes = await fetch(wasmUrl).then((r) => r.arrayBuffer());
+    const wasmModule = await WebAssembly.compile(wasmBytes);
+
     await this.context.audioWorklet.addModule(processorUrl);
 
     this.node = new AudioWorkletNode(this.context, 'lf-engine-processor', {
       numberOfOutputs: 1,
       outputChannelCount: [2],
-      processorOptions: { wasmUrl },
+      processorOptions: { wasmModule },
     });
 
     this.node.connect(this.context.destination);
@@ -187,7 +197,28 @@ export class EngineController {
             this.pendingRequests.delete(reqId);
           }
         } else {
+          // Fatal engine error (e.g. WASM failed to load). Reject every
+          // in-flight and queued request so callers don't hang indefinitely.
+          const err = new Error(msg.message as string);
+          this.fatalError = err;
           console.error('[LoopEngine]', msg.message);
+
+          for (const { payload } of this.preReadyQueue) {
+            const id = (payload as Record<string, unknown>).requestId as number | undefined;
+            if (id !== undefined) {
+              const req = this.pendingRequests.get(id);
+              if (req) {
+                req.reject(err);
+                this.pendingRequests.delete(id);
+              }
+            }
+          }
+          this.preReadyQueue = [];
+
+          for (const [id, req] of this.pendingRequests) {
+            req.reject(err);
+            this.pendingRequests.delete(id);
+          }
         }
         break;
       }
@@ -211,6 +242,7 @@ export class EngineController {
     cmd: Record<string, unknown>,
     transfer: Transferable[] = [],
   ): Promise<T> {
+    if (this.fatalError) return Promise.reject(this.fatalError);
     const requestId = this.nextRequestId++;
     const cmdWithId = { ...cmd, requestId };
 
