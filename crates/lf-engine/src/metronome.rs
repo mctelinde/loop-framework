@@ -74,6 +74,12 @@ impl Metronome {
             return 0.0;
         }
 
+        // Advance phase first to avoid zero on first sample
+        self.phase += self.click_freq / self.sample_rate as f32;
+        if self.phase >= 1.0 {
+            self.phase -= 1.0;
+        }
+
         // Generate a sine wave at click_freq
         let sample = (self.phase * 2.0 * std::f32::consts::PI).sin();
 
@@ -88,12 +94,6 @@ impl Metronome {
         };
 
         self.click_samples_remaining -= 1;
-
-        // Advance phase for next sample
-        self.phase += self.click_freq / self.sample_rate as f32;
-        if self.phase >= 1.0 {
-            self.phase -= 1.0;
-        }
 
         sample * envelope * gain * self.volume
     }
