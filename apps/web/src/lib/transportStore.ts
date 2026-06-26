@@ -1,7 +1,7 @@
 /**
  * transportStore.ts
  *
- * Single source of truth for transport state, BPM, and time signature.
+ * Single source of truth for transport state, BPM, time signature, and metronome.
  * All mutations go through these functions so the engine and UI stay in sync.
  */
 
@@ -25,10 +25,14 @@ export const TIME_SIGNATURES: TimeSignature[] = [
 const _state = writable<TransportState>('stopped');
 const _bpm = writable<number>(120);
 const _timeSig = writable<TimeSignature>(TIME_SIGNATURES[0]);
+const _metronomeEnabled = writable<boolean>(false);
+const _metronomeVolume = writable<number>(0.3);
 
 export const transportState: Readable<TransportState> = derived(_state, ($s) => $s);
 export const bpm: Readable<number> = derived(_bpm, ($b) => $b);
 export const timeSig: Readable<TimeSignature> = derived(_timeSig, ($t) => $t);
+export const metronomeEnabled: Readable<boolean> = derived(_metronomeEnabled, ($e) => $e);
+export const metronomeVolume: Readable<number> = derived(_metronomeVolume, ($v) => $v);
 
 export function play(): void {
   get(engine)?.play();
@@ -78,4 +82,17 @@ export function tap(): void {
   const intervals = tapTimes.slice(1).map((t, i) => t - tapTimes[i]);
   const avg = intervals.reduce((a, b) => a + b, 0) / intervals.length;
   setBpm(Math.round(60_000 / avg));
+}
+
+// ── Metronome ───────────────────────────────────────────────────────────────
+
+export function setMetronomeEnabled(enabled: boolean): void {
+  _metronomeEnabled.set(enabled);
+  get(engine)?.setMetronomeEnabled(enabled);
+}
+
+export function setMetronomeVolume(volume: number): void {
+  const clamped = Math.max(0, Math.min(1, volume));
+  _metronomeVolume.set(clamped);
+  get(engine)?.setMetronomeVolume(clamped);
 }
