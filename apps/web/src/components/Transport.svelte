@@ -2,6 +2,8 @@
   import {
     transportState, bpm, timeSig,
     play, pause, stop, setBpm, setTimeSig, tap,
+    metronomeEnabled, metronomeVolume,
+    setMetronomeEnabled, setMetronomeVolume,
     TIME_SIGNATURES,
   } from '../lib/transportStore';
 
@@ -129,6 +131,36 @@
         >{sig.label}</button>
       {/each}
     </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── Metronome ─────────────────────────────────────────────── -->
+  <div class="metronome-control" role="group" aria-label="Metronome">
+    <button
+      class="metronome-btn"
+      class:active={$metronomeEnabled}
+      onclick={() => setMetronomeEnabled(!$metronomeEnabled)}
+      aria-pressed={$metronomeEnabled}
+      title="Toggle metronome click track"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <path d="M8 2 L8 4 M8 12 L8 14 M2 8 L4 8 M12 8 L14 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Click
+    </button>
+    <input
+      type="range"
+      class="metronome-volume"
+      min="0"
+      max="100"
+      value={Math.round($metronomeVolume * 100)}
+      onchange={(e) => setMetronomeVolume(parseInt(e.currentTarget.value) / 100)}
+      title="Metronome volume"
+      aria-label="Metronome volume"
+      disabled={!$metronomeEnabled}
+    />
   </div>
 </div>
 
@@ -340,5 +372,125 @@
     background: #1a2a3a;
     border-color: #2a6090;
     color: #5baee8;
+  }
+
+  /* ── Metronome ── */
+  .metronome-control {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .metronome-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    border: 1px solid #333;
+    background: #222;
+    color: #bbb;
+    white-space: nowrap;
+    user-select: none;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+
+  @media (max-width: 640px) {
+    .metronome-btn {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.65rem;
+      gap: 0.2rem;
+    }
+
+    .metronome-btn svg {
+      width: 10px;
+      height: 10px;
+    }
+  }
+
+  .metronome-btn:hover:not(:disabled) { background: #2a2a2a; color: #fff; }
+  .metronome-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .metronome-btn svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    flex-shrink: 0;
+  }
+
+  .metronome-btn.active {
+    border-color: #2a4a2a;
+    background: #1a2a1a;
+    color: #4caf50;
+  }
+
+  .metronome-btn.active:hover {
+    background: #1e3a1e;
+    color: #66bb6a;
+  }
+
+  .metronome-volume {
+    width: 60px;
+    height: 4px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(to right, #2a2a2a 0%, #2a2a2a 100%);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .metronome-volume::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #4caf50;
+    cursor: pointer;
+    border: 1px solid #2a4a2a;
+    transition: background 0.1s;
+  }
+
+  .metronome-volume::-webkit-slider-thumb:hover {
+    background: #66bb6a;
+  }
+
+  .metronome-volume::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #4caf50;
+    cursor: pointer;
+    border: 1px solid #2a4a2a;
+    transition: background 0.1s;
+  }
+
+  .metronome-volume::-moz-range-thumb:hover {
+    background: #66bb6a;
+  }
+
+  .metronome-volume:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  @media (max-width: 640px) {
+    .metronome-volume {
+      width: 45px;
+      height: 3px;
+    }
+
+    .metronome-volume::-webkit-slider-thumb {
+      width: 10px;
+      height: 10px;
+    }
+
+    .metronome-volume::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+    }
   }
 </style>

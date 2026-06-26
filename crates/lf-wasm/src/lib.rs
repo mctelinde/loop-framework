@@ -55,6 +55,20 @@ impl LoopEngine {
         self.inner.set_master_volume(volume);
     }
 
+    // ── Metronome ────────────────────────────────────────────────────────────
+
+    pub fn set_metronome_enabled(&mut self, enabled: bool) {
+        self.inner.set_metronome_enabled(enabled);
+    }
+
+    pub fn is_metronome_enabled(&self) -> bool {
+        self.inner.is_metronome_enabled()
+    }
+
+    pub fn set_metronome_volume(&mut self, volume: f32) {
+        self.inner.set_metronome_volume(volume);
+    }
+
     // ── Layers ───────────────────────────────────────────────────────────────
 
     /// Decode and add an audio layer.  Returns the layer's numeric ID.
