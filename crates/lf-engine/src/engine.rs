@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::{
     buffer::{decode_audio, DecodeError},
     layer::{Layer, LayerId},
+    metronome::Metronome,
     quantize::samples_to_next_beat,
 };
 
@@ -23,10 +24,15 @@ pub struct Engine {
     state: TransportState,
     /// Running count of rendered samples (for beat-grid calculations).
     transport_sample: u64,
+    /// Last beat the metronome was triggered on (to avoid double-triggering)
+    last_triggered_beat: u64,
 
     layers: HashMap<LayerId, Layer>,
     /// Insertion-order list of layer IDs for deterministic mix order.
     layer_order: Vec<LayerId>,
+    
+    /// Metronome for click track
+    metronome: Metronome,
 }
 
 impl Engine {
@@ -38,8 +44,10 @@ impl Engine {
             master_volume: 1.0,
             state: TransportState::Stopped,
             transport_sample: 0,
+            last_triggered_beat: 0,
             layers: HashMap::new(),
             layer_order: Vec::new(),
+            metronome: Metronome::new(sample_rate),
         }
     }
 
@@ -56,6 +64,7 @@ impl Engine {
     pub fn stop(&mut self) {
         self.state = TransportState::Stopped;
         self.transport_sample = 0;
+        self.last_triggered_beat = 0;
         for layer in self.layers.values_mut() {
             layer.reset();
         }
@@ -87,6 +96,20 @@ impl Engine {
             self.bpm,
             self.beats_per_bar,
         )
+    }
+
+    // ── Metronome ────────────────────────────────────────────────────────────
+
+    pub fn set_metronome_enabled(&mut self, enabled: bool) {
+        self.metronome.set_enabled(enabled);
+    }
+
+    pub fn is_metronome_enabled(&self) -> bool {
+        self.metronome.is_enabled()
+    }
+
+    pub fn set_metronome_volume(&mut self, volume: f32) {
+        self.metronome.set_volume(volume);
     }
 
     // ── Layer management ─────────────────────────────────────────────────────
@@ -165,6 +188,16 @@ impl Engine {
             let mut left = 0.0f32;
             let mut right = 0.0f32;
 
+            // ── Check for beat boundary and trigger metronome ────────────────
+            if self.metronome.is_enabled() {
+                let current_beat = (self.transport_sample * self.bpm as u64) / (60 * self.sample_rate as u64);
+                if current_beat != self.last_triggered_beat {
+                    self.last_triggered_beat = current_beat;
+                    let is_beat_one = (current_beat % self.beats_per_bar as u64) == 0;
+                    self.metronome.trigger_click(is_beat_one);
+                }
+            }
+
             // Process layers in insertion order; each is accessed independently.
             for &id in &self.layer_order {
                 let layer = match self.layers.get_mut(&id) {
@@ -179,6 +212,11 @@ impl Engine {
                 }
                 layer.advance(1);
             }
+
+            // Mix in metronome
+            let metro = self.metronome.next_sample();
+            left += metro;
+            right += metro;
 
             output[i * 2] = soft_clip(left) * self.master_volume;
             output[i * 2 + 1] = soft_clip(right) * self.master_volume;

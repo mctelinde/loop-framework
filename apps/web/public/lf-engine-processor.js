@@ -171,6 +171,18 @@ class LoopEngine {
     set_master_volume(volume) {
         wasm.loopengine_set_master_volume(this.__wbg_ptr, volume);
     }
+    /**
+     * @param {boolean} enabled
+     */
+    set_metronome_enabled(enabled) {
+        wasm.loopengine_set_metronome_enabled(this.__wbg_ptr, enabled);
+    }
+    /**
+     * @param {number} volume
+     */
+    set_metronome_volume(volume) {
+        wasm.loopengine_set_metronome_volume(this.__wbg_ptr, volume);
+    }
     stop() {
         wasm.loopengine_stop(this.__wbg_ptr);
     }
@@ -489,6 +501,12 @@ class LoopEngineProcessor extends AudioWorkletProcessor {
       case 'setLayerMuted':  engine.set_layer_muted(cmd.layerId, cmd.muted); break;
       case 'setLayerSoloed': engine.set_layer_soloed(cmd.layerId, cmd.soloed); break;
       case 'setLoopRegion':  engine.set_loop_region(cmd.layerId, cmd.startSecs, cmd.endSecs); break;
+      case 'setMetronomeEnabled':
+        try { engine.set_metronome_enabled(cmd.enabled); } catch(e) {}
+        break;
+      case 'setMetronomeVolume':
+        try { engine.set_metronome_volume(cmd.volume); } catch(e) {}
+        break;
       case 'getWaveformPeaks': {
         var peaks = engine.layer_waveform_peaks(cmd.layerId, cmd.bucketCount);
         this.port.postMessage({ type: 'waveformPeaks', requestId: cmd.requestId, layerId: cmd.layerId, peaks: peaks }, [peaks.buffer]);

@@ -91,6 +91,11 @@ export class EngineController {
   setBeatsPerBar(beats: number): void { this._send({ type: 'setBeatsPerBar', beats }); }
   setMasterVolume(volume: number): void { this._send({ type: 'setMasterVolume', volume }); }
 
+  // ── Metronome ────────────────────────────────────────────────────────────
+
+  setMetronomeEnabled(enabled: boolean): void { this._send({ type: 'setMetronomeEnabled', enabled }); }
+  setMetronomeVolume(volume: number): void { this._send({ type: 'setMetronomeVolume', volume }); }
+
   // ── Layers ───────────────────────────────────────────────────────────────
 
   /**
