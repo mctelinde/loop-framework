@@ -190,7 +190,7 @@ impl Engine {
 
             // ── Check for beat boundary and trigger metronome ────────────────
             if self.metronome.is_enabled() {
-                let current_beat = (self.transport_sample * self.bpm as u64 * self.beats_per_bar as u64) / (60 * self.sample_rate as u64);
+                let current_beat = (self.transport_sample * self.bpm as u64) / (60 * self.sample_rate as u64);
                 if current_beat != self.last_triggered_beat {
                     self.last_triggered_beat = current_beat;
                     let is_beat_one = (current_beat % self.beats_per_bar as u64) == 0;
