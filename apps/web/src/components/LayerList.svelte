@@ -2,6 +2,9 @@
   import { layers, addLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
+  import { engine } from '../lib/engineStore';
+  import { metronomeEnabled } from '../lib/transportStore';
+  import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
 
@@ -38,6 +41,11 @@
         recordingState = state;
       });
       await micRecorder.startRecording(MAX_RECORDING_DURATION);
+
+      // Enable metronome during recording if it's enabled in transport
+      if ($metronomeEnabled) {
+        get(engine)?.setMetronomeEnabled(true);
+      }
     } catch (err) {
       recordingError = `${err}`;
       micRecorder = null;
@@ -49,6 +57,9 @@
     try {
       const wavBlob = micRecorder.stopRecording();
       micRecorder = null;
+
+      // Disable metronome when recording stops
+      get(engine)?.setMetronomeEnabled(false);
 
       // Convert blob to File for addLayer()
       const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' });
