@@ -67,7 +67,7 @@ export async function runCountIn(): Promise<void> {
    const duration = get(_countInDuration);
    const currentBpm = get(bpm);
    const beatDurationMs = (60_000 / currentBpm); // ms per beat
-   const clickDurationMs = 0.1; // click sound duration in ms
+   const clickDurationMs = 100; // click sound duration in milliseconds
 
    for (let i = 1; i <= duration; i++) {
      if (countInAbort.signal.aborted) {
