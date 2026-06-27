@@ -99,6 +99,12 @@
     min-height: 100vh;
   }
 
+  @import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
+
+  :global(h1) {
+    font-family: 'Righteous', cursive;
+  }
+
   main {
     display: flex;
     flex-direction: column;
@@ -129,8 +135,9 @@
   .header-spacer { flex: 1; min-width: 0; }
 
   h1 {
+    font-family: 'Righteous', cursive;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #fff;
