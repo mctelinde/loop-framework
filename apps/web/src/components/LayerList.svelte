@@ -1,6 +1,7 @@
 <script lang="ts">
   import { layers, addLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
+  import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
 
   // ── File validation ────────────────────────────────────────────────────────
 
@@ -28,6 +29,11 @@
   async function startRecording() {
     recordingError = null;
     try {
+      // Run count-in before starting microphone recording if enabled
+      if ($countInEnabled) {
+        await runCountIn();
+      }
+
       micRecorder = new MicRecorder((state) => {
         recordingState = state;
       });
@@ -53,6 +59,7 @@
   }
 
   function cancelRecording() {
+    cancelCountIn();
     if (!micRecorder) return;
     micRecorder.cancelRecording();
     micRecorder = null;
