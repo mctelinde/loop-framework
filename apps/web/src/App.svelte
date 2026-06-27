@@ -45,7 +45,7 @@
 
 <main>
   <header class="app-header">
-    <h1>Loop Framework</h1>
+    <h1><span class="logo-loop">Loop</span><span class="logo-framework">Framework</span></h1>
     {#if !$engineReady && !initError}
       <span class="status loading">Loading engine…</span>
     {:else if initError}
@@ -141,6 +141,22 @@
     letter-spacing: 0.05em;
     text-transform: uppercase;
     color: #fff;
+    display: flex;
+    align-items: baseline;
+    gap: 0.3rem;
+  }
+
+  .logo-loop {
+    font-family: 'Righteous', cursive;
+    color: #fff;
+  }
+
+  .logo-framework {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.75rem;
+    color: #888;
+    font-weight: 400;
+    letter-spacing: 0.05em;
   }
 
   @media (max-width: 640px) {
