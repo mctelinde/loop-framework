@@ -63,6 +63,7 @@ export async function runCountIn(): Promise<void> {
     const duration = get(_countInDuration);
     const currentBpm = get(bpm);
     const beatDurationMs = (60_000 / currentBpm); // ms per beat
+    const clickDurationMs = 0.1; // click sound duration in ms
 
     for (let i = 1; i <= duration; i++) {
       if (countInAbort.signal.aborted) {
@@ -75,32 +76,30 @@ export async function runCountIn(): Promise<void> {
       // Play click sound
       playCountInClick(countInAudioContext, i === duration);
 
-      // Wait for the beat duration (except for the last beat)
-      if (i < duration) {
+      // Calculate wait time: full beat minus click duration for the last beat, 
+      // full beat for other beats
+      const waitTime = beatDurationMs - (i === duration ? clickDurationMs : 0);
+      
+      if (waitTime > 0) {
         await new Promise((resolve) =>
-          setTimeout(resolve, beatDurationMs)
+          setTimeout(resolve, waitTime)
         );
       }
     }
 
-    // Final beat holds for a shorter duration, then ready
-    await new Promise((resolve) =>
-      setTimeout(resolve, beatDurationMs * 0.5)
-    );
-
-    _countInState.set('ready');
-    _countInCounter.set(0);
-  } catch (err) {
-    if ((err as Error).name !== 'AbortError') {
-      console.error('Count-in error:', err);
-    }
-    _countInState.set('idle');
-  }
+   _countInState.set('ready');
+   _countInCounter.set(0);
+ } catch (err) {
+   if ((err as Error).name !== 'AbortError') {
+     console.error('Count-in error:', err);
+   }
+   _countInState.set('idle');
+ }
 }
 
 /**
- * Cancels any ongoing count-in sequence.
- */
+* Cancels any ongoing count-in sequence.
+*/
 export function cancelCountIn(): void {
   if (countInAbort) {
     countInAbort.abort();
