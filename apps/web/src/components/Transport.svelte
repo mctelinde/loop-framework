@@ -6,6 +6,10 @@
     setMetronomeEnabled, setMetronomeVolume,
     TIME_SIGNATURES,
   } from '../lib/transportStore';
+  import {
+    countInEnabled, countInDuration, countInState, countInCounter,
+    toggleCountIn, setCountInDuration,
+  } from '../lib/countInStore';
 
   // BPM input: allow typing a value directly.
   let editingBpm = $state(false);
@@ -161,6 +165,52 @@
       aria-label="Metronome volume"
       disabled={!$metronomeEnabled}
     />
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── Count-in ──────────────────────────────────────────────── -->
+  <div class="countin-control" role="group" aria-label="Count-in">
+    <button
+      class="countin-btn"
+      class:active={$countInEnabled}
+      class:counting={$countInState === 'counting'}
+      onclick={toggleCountIn}
+      aria-pressed={$countInEnabled}
+      title="Toggle count-in before playback"
+      disabled={$countInState === 'counting'}
+    >
+      {#if $countInState === 'counting'}
+        <span class="countin-display">{$countInCounter}</span>
+      {:else}
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1" fill="none"/>
+          <text x="8" y="9.5" text-anchor="middle" font-size="8" fill="currentColor">♩</text>
+        </svg>
+        Count-in
+      {/if}
+    </button>
+
+    <div class="countin-options">
+      <button
+        class="countin-duration-btn"
+        class:active={$countInDuration === 2}
+        onclick={() => setCountInDuration(2)}
+        disabled={$countInState === 'counting'}
+        title="2-beat count-in"
+        aria-label="2-beat count-in"
+        aria-pressed={$countInDuration === 2}
+      >2</button>
+      <button
+        class="countin-duration-btn"
+        class:active={$countInDuration === 4}
+        onclick={() => setCountInDuration(4)}
+        disabled={$countInState === 'counting'}
+        title="4-beat count-in"
+        aria-label="4-beat count-in"
+        aria-pressed={$countInDuration === 4}
+      >4</button>
+    </div>
   </div>
 </div>
 
@@ -492,5 +542,121 @@
       width: 10px;
       height: 10px;
     }
+  }
+
+  /* ── Count-in ── */
+  .countin-control {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .countin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    cursor: pointer;
+    border: 1px solid #333;
+    background: #222;
+    color: #bbb;
+    white-space: nowrap;
+    user-select: none;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+    min-width: 5rem;
+  }
+
+  @media (max-width: 640px) {
+    .countin-btn {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.65rem;
+      gap: 0.2rem;
+      min-width: 4rem;
+    }
+
+    .countin-btn svg {
+      width: 10px;
+      height: 10px;
+    }
+  }
+
+  .countin-btn:hover:not(:disabled) { background: #2a2a2a; color: #fff; }
+  .countin-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .countin-btn svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    flex-shrink: 0;
+  }
+
+  .countin-btn.active {
+    border-color: #4a6a2a;
+    background: #1a2a1a;
+    color: #66bb6a;
+  }
+
+  .countin-btn.active:hover:not(:disabled) {
+    background: #1e3a1e;
+    color: #88dd88;
+  }
+
+  .countin-btn.counting {
+    background: #2a4a7a;
+    border-color: #3a5a9a;
+    color: #7baee8;
+    animation: pulse-blue 0.6s ease-in-out infinite;
+  }
+
+  .countin-display {
+    font-size: 1rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .countin-options {
+    display: flex;
+    gap: 0.2rem;
+  }
+
+  .countin-duration-btn {
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    color: #888;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.1s;
+  }
+
+  @media (max-width: 640px) {
+    .countin-duration-btn {
+      width: 1.2rem;
+      height: 1.2rem;
+      font-size: 0.65rem;
+    }
+  }
+
+  .countin-duration-btn:hover:not(:disabled) { background: #2e2e2e; color: #fff; }
+  .countin-duration-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .countin-duration-btn.active {
+    background: #1a2a3a;
+    border-color: #2a6090;
+    color: #5baee8;
+  }
+
+  @keyframes pulse-blue {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
   }
 </style>

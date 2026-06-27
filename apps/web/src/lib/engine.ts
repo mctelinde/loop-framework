@@ -52,6 +52,14 @@ export class EngineController {
   }
 
   /**
+   * Returns the AudioContext used by this engine.
+   * Useful for features that need to generate audio in sync with the engine.
+   */
+  getAudioContext(): AudioContext {
+    return this.context;
+  }
+
+  /**
    * Load the AudioWorklet module and set up the node.
    * Must be called once before any other method (though other calls will
    * queue safely and execute once this resolves).

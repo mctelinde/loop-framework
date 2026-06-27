@@ -1,6 +1,10 @@
 <script lang="ts">
   import { layers, addLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
+  import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
+  import { engine } from '../lib/engineStore';
+  import { metronomeEnabled } from '../lib/transportStore';
+  import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
 
@@ -28,10 +32,22 @@
   async function startRecording() {
     recordingError = null;
     try {
+      // Run count-in before starting microphone recording if enabled
+      if ($countInEnabled) {
+        await runCountIn();
+      }
+
       micRecorder = new MicRecorder((state) => {
         recordingState = state;
       });
       await micRecorder.startRecording(MAX_RECORDING_DURATION);
+
+      // Start engine transport if metronome is enabled
+      // This makes the metronome audible during recording
+      if ($metronomeEnabled) {
+        get(engine)?.play();
+        get(engine)?.setMetronomeEnabled(true);
+      }
     } catch (err) {
       recordingError = `${err}`;
       micRecorder = null;
@@ -44,6 +60,10 @@
       const wavBlob = micRecorder.stopRecording();
       micRecorder = null;
 
+      // Stop engine transport
+      get(engine)?.stop();
+      get(engine)?.setMetronomeEnabled(false);
+
       // Convert blob to File for addLayer()
       const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' });
       await addLayer(file);
@@ -53,9 +73,14 @@
   }
 
   function cancelRecording() {
+    cancelCountIn();
     if (!micRecorder) return;
     micRecorder.cancelRecording();
     micRecorder = null;
+
+    // Stop engine when recording is cancelled
+    get(engine)?.stop();
+    get(engine)?.setMetronomeEnabled(false);
   }
 
   function formatTime(seconds: number): string {

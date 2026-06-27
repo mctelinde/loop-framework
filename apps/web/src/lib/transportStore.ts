@@ -7,6 +7,7 @@
 
 import { writable, derived, get, type Readable } from 'svelte/store';
 import { engine } from './engineStore';
+import { runCountIn, cancelCountIn, countInState } from './countInStore';
 
 export type TransportState = 'stopped' | 'playing' | 'paused';
 
@@ -34,17 +35,28 @@ export const timeSig: Readable<TimeSignature> = derived(_timeSig, ($t) => $t);
 export const metronomeEnabled: Readable<boolean> = derived(_metronomeEnabled, ($e) => $e);
 export const metronomeVolume: Readable<number> = derived(_metronomeVolume, ($v) => $v);
 
-export function play(): void {
-  get(engine)?.play();
-  _state.set('playing');
+export async function play(): Promise<void> {
+  // Start count-in if enabled
+  const state = get(countInState);
+  if (state === 'idle') {
+    await runCountIn();
+  }
+
+  // Only start playback if count-in completed or was disabled
+  if (get(countInState) !== 'counting') {
+    get(engine)?.play();
+    _state.set('playing');
+  }
 }
 
 export function pause(): void {
+  cancelCountIn();
   get(engine)?.pause();
   _state.set('paused');
 }
 
 export function stop(): void {
+  cancelCountIn();
   get(engine)?.stop();
   _state.set('stopped');
 }
