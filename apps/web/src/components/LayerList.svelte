@@ -42,8 +42,10 @@
       });
       await micRecorder.startRecording(MAX_RECORDING_DURATION);
 
-      // Enable metronome during recording if it's enabled in transport
+      // Start engine transport if metronome is enabled
+      // This makes the metronome audible during recording
       if ($metronomeEnabled) {
+        get(engine)?.play();
         get(engine)?.setMetronomeEnabled(true);
       }
     } catch (err) {
@@ -58,7 +60,8 @@
       const wavBlob = micRecorder.stopRecording();
       micRecorder = null;
 
-      // Disable metronome when recording stops
+      // Stop engine transport
+      get(engine)?.stop();
       get(engine)?.setMetronomeEnabled(false);
 
       // Convert blob to File for addLayer()
@@ -74,6 +77,10 @@
     if (!micRecorder) return;
     micRecorder.cancelRecording();
     micRecorder = null;
+
+    // Stop engine when recording is cancelled
+    get(engine)?.stop();
+    get(engine)?.setMetronomeEnabled(false);
   }
 
   function formatTime(seconds: number): string {
