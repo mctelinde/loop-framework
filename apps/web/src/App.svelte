@@ -86,6 +86,8 @@
 </main>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
+
   :global(*, *::before, *::after) {
     box-sizing: border-box;
     margin: 0;
@@ -98,8 +100,6 @@
     font-family: 'Inter', system-ui, sans-serif;
     min-height: 100vh;
   }
-
-  @import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
 
   :global(h1) {
     font-family: 'Righteous', cursive;
