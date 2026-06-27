@@ -7,6 +7,7 @@
 
 import { writable, derived, get, type Readable } from 'svelte/store';
 import { bpm } from './transportStore';
+import { engine } from './engineStore';
 
 export type CountInDuration = 2 | 4;
 export type CountInState = 'idle' | 'counting' | 'ready';
@@ -22,7 +23,6 @@ export const countInState: Readable<CountInState> = derived(_countInState, ($s) 
 export const countInCounter: Readable<number> = derived(_countInCounter, ($c) => $c);
 
 let countInAbort: AbortController | null = null;
-let countInAudioContext: AudioContext | null = null;
 
 export function toggleCountIn(): void {
   _countInEnabled.update(($e) => !$e);
@@ -55,37 +55,41 @@ export async function runCountIn(): Promise<void> {
   _countInCounter.set(0);
 
   try {
-    // Initialize audio context if needed
-    if (!countInAudioContext) {
-      countInAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
+   // Get the shared AudioContext from the engine
+   const engineCtrl = get(engine);
+   if (!engineCtrl) {
+     console.error('Engine not initialized for count-in');
+     return;
+   }
 
-    const duration = get(_countInDuration);
-    const currentBpm = get(bpm);
-    const beatDurationMs = (60_000 / currentBpm); // ms per beat
-    const clickDurationMs = 0.1; // click sound duration in ms
+   const audioContext = engineCtrl.getAudioContext();
 
-    for (let i = 1; i <= duration; i++) {
-      if (countInAbort.signal.aborted) {
-        _countInState.set('idle');
-        return;
-      }
+   const duration = get(_countInDuration);
+   const currentBpm = get(bpm);
+   const beatDurationMs = (60_000 / currentBpm); // ms per beat
+   const clickDurationMs = 0.1; // click sound duration in ms
 
-      _countInCounter.set(i);
+   for (let i = 1; i <= duration; i++) {
+     if (countInAbort.signal.aborted) {
+       _countInState.set('idle');
+       return;
+     }
 
-      // Play click sound
-      playCountInClick(countInAudioContext, i === duration);
+     _countInCounter.set(i);
 
-      // Calculate wait time: full beat minus click duration for the last beat, 
-      // full beat for other beats
-      const waitTime = beatDurationMs - (i === duration ? clickDurationMs : 0);
+     // Play click sound
+     playCountInClick(audioContext, i === duration);
+
+     // Calculate wait time: full beat minus click duration for the last beat, 
+     // full beat for other beats
+     const waitTime = beatDurationMs - (i === duration ? clickDurationMs : 0);
       
-      if (waitTime > 0) {
-        await new Promise((resolve) =>
-          setTimeout(resolve, waitTime)
-        );
-      }
-    }
+     if (waitTime > 0) {
+       await new Promise((resolve) =>
+         setTimeout(resolve, waitTime)
+       );
+     }
+   }
 
    _countInState.set('ready');
    _countInCounter.set(0);
