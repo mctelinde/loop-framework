@@ -268,6 +268,11 @@
 >
   <!-- ── Header ──────────────────────────────────────────────────────── -->
   <div class="list-header">
+    <svg class="layers-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
     {#if $importing > 0}
       <span class="loading-pill">
         <span class="spinner"></span>
@@ -425,13 +430,9 @@
     min-width: 0;
   }
 
-  .header-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #555;
+  .layers-icon {
     flex-shrink: 0;
+    color: #555;
   }
 
   .add-btn {
@@ -455,9 +456,8 @@
     align-items: center;
     gap: 0.3rem;
     min-width: 0;
-    flex: 1;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-start;
   }
 
   .measure-selector-wrapper {
