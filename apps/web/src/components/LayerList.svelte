@@ -547,12 +547,6 @@
     line-height: 1.2;
     display: flex;
     align-items: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 50px;
-    min-width: 0;
-    flex: 0 1 auto;
   }
 
   .record-btn:hover:not(:disabled) {
