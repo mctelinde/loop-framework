@@ -455,6 +455,9 @@
     display: flex;
     align-items: center;
     gap: 0.3rem;
+    min-width: 0;
+    flex: 1;
+    justify-content: flex-end;
   }
 
   .measure-selector-wrapper {
@@ -544,7 +547,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 180px;
+    max-width: 120px;
+    min-width: 0;
+    flex-shrink: 1;
   }
 
   .record-btn:hover:not(:disabled) {
