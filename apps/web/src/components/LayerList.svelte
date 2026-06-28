@@ -531,8 +531,8 @@
   }
 
   .stop-btn {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
     background: #4caf50;
     border: 1px solid #45a049;
     border-radius: 4px;
@@ -546,8 +546,8 @@
   }
 
   .cancel-btn {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
     background: #555;
     border: 1px solid #777;
     border-radius: 4px;
