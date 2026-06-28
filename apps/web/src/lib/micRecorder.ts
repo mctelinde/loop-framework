@@ -9,6 +9,9 @@ export interface RecordingState {
   isRecording: boolean;
   duration: number; // seconds
   maxDuration?: number; // optional max recording time
+  currentMeasure?: number; // 1-indexed measure number (when recording by measures)
+  totalMeasures?: number; // total measures to record
+  measureDuration?: number; // seconds per measure
 }
 
 export class MicRecorder {
@@ -22,12 +25,15 @@ export class MicRecorder {
   private recordingStartTime = 0;
   private maxDuration: number | undefined;
   private timerInterval: number | undefined;
+  private currentMeasure = 1;
+  private totalMeasures: number | undefined;
+  private measureDuration: number | undefined;
 
   constructor(onStateChange?: (state: RecordingState) => void) {
     this.onStateChange = onStateChange;
   }
 
-  async startRecording(maxDurationSec?: number): Promise<void> {
+  async startRecording(maxDurationSec?: number, totalMeasures?: number, measureDuration?: number): Promise<void> {
     try {
       // Get microphone access
       this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -55,6 +61,9 @@ export class MicRecorder {
       this.audioBuffer = [];
       this.recordingStartTime = Date.now();
       this.maxDuration = maxDurationSec;
+      this.totalMeasures = totalMeasures;
+      this.measureDuration = measureDuration;
+      this.currentMeasure = 1;
 
       this.updateState();
 
@@ -64,6 +73,11 @@ export class MicRecorder {
         if (!this.isRecording) return;
 
         const elapsed = (Date.now() - this.recordingStartTime) / 1000;
+
+        // Update current measure if tracking by measures
+        if (this.measureDuration && this.totalMeasures) {
+          this.currentMeasure = Math.floor(elapsed / this.measureDuration) + 1;
+        }
 
         // Auto-stop if max duration reached
         if (this.maxDuration && elapsed >= this.maxDuration) {
@@ -154,6 +168,9 @@ export class MicRecorder {
       isRecording: this.isRecording,
       duration: elapsed,
       maxDuration: this.maxDuration,
+      currentMeasure: this.currentMeasure,
+      totalMeasures: this.totalMeasures,
+      measureDuration: this.measureDuration,
     });
   }
 

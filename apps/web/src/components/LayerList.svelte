@@ -3,12 +3,14 @@
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
   import { engine } from '../lib/engineStore';
-  import { metronomeEnabled } from '../lib/transportStore';
+  import { metronomeEnabled, bpm, timeSig } from '../lib/transportStore';
+  import { recordingConfig, setMeasureCount, calculateMeasureDuration, calculateRecordingDuration, formatRecordingProgress } from '../lib/recordingStore';
   import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
 
   const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
+  const MEASURE_OPTIONS = [2, 4, 8, 16, 32];
 
   function filterAudioFiles(fileList: FileList | null): File[] {
     if (!fileList) return [];
@@ -26,8 +28,7 @@
   let micRecorder: MicRecorder | null = null;
   let recordingState = $state<RecordingState>({ isRecording: false, duration: 0 });
   let recordingError = $state<string | null>(null);
-
-  const MAX_RECORDING_DURATION = 30; // seconds
+  let showMeasureSelector = $state(false);
 
   async function startRecording() {
     recordingError = null;
@@ -37,10 +38,20 @@
         await runCountIn();
       }
 
+      const config = get(recordingConfig);
+      const measureDuration = calculateMeasureDuration();
+      const maxDuration = calculateRecordingDuration();
+
       micRecorder = new MicRecorder((state) => {
         recordingState = state;
       });
-      await micRecorder.startRecording(MAX_RECORDING_DURATION);
+
+      // Pass measure info if recording by measures
+      await micRecorder.startRecording(
+        maxDuration,
+        config.mode === 'measures' ? config.measureCount : undefined,
+        config.mode === 'measures' ? measureDuration : undefined
+      );
 
       // Start engine transport if metronome is enabled
       // This makes the metronome audible during recording
@@ -83,9 +94,15 @@
     get(engine)?.setMetronomeEnabled(false);
   }
 
-  function formatTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
+  function formatRecordingDisplay(state: RecordingState): string {
+    const config = get(recordingConfig);
+    if (config.mode === 'measures' && state.totalMeasures && state.currentMeasure) {
+      return `Measure ${Math.min(state.currentMeasure, state.totalMeasures)} of ${state.totalMeasures}`;
+    }
+    
+    // Fallback to time display
+    const m = Math.floor(state.duration / 60);
+    const s = Math.floor(state.duration % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
@@ -246,11 +263,37 @@
     <div class="header-buttons">
       {#if recordingState.isRecording}
         <button class="record-btn recording" disabled title="Recording">
-          ● REC {formatTime(recordingState.duration)}
+          ● REC {formatRecordingDisplay(recordingState)}
         </button>
         <button class="stop-btn" onclick={stopRecording} title="Stop recording">⏹</button>
         <button class="cancel-btn" onclick={cancelRecording} title="Cancel recording">✕</button>
       {:else}
+        <div class="measure-selector-wrapper">
+          <button 
+            class="measure-toggle-btn" 
+            onclick={() => (showMeasureSelector = !showMeasureSelector)}
+            title="Select recording length"
+          >
+            {$recordingConfig.measureCount}m
+          </button>
+          {#if showMeasureSelector}
+            <div class="measure-dropdown">
+              {#each MEASURE_OPTIONS as measures}
+                <button
+                  class="measure-option"
+                  class:selected={$recordingConfig.measureCount === measures}
+                  onclick={() => {
+                    setMeasureCount(measures);
+                    showMeasureSelector = false;
+                  }}
+                  title={`Record ${measures} measures`}
+                >
+                  {measures}m
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
         <button class="record-btn" onclick={startRecording} title="Record from microphone">
           ◐ Rec
         </button>
@@ -391,6 +434,72 @@
     display: flex;
     align-items: center;
     gap: 0.3rem;
+  }
+
+  .measure-selector-wrapper {
+    position: relative;
+  }
+
+  .measure-toggle-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.45rem;
+    background: #1a1e2a;
+    border: 1px solid #2e3a4a;
+    border-radius: 4px;
+    color: #7dd3fc;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .measure-toggle-btn:hover {
+    background: #222a38;
+    color: #a5e3ff;
+  }
+
+  .measure-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    margin-top: 0.2rem;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    min-width: 60px;
+  }
+
+  .measure-option {
+    display: block;
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    background: transparent;
+    border: none;
+    color: #7dd3fc;
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+  }
+
+  .measure-option:first-child {
+    border-radius: 3px 3px 0 0;
+  }
+
+  .measure-option:last-child {
+    border-radius: 0 0 3px 3px;
+  }
+
+  .measure-option:hover {
+    background: #2a2a3a;
+    color: #a5e3ff;
+  }
+
+  .measure-option.selected {
+    background: #1e3a4a;
+    color: #4caf50;
+    font-weight: 600;
   }
 
   .record-btn {
