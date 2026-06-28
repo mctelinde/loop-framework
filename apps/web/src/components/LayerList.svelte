@@ -30,6 +30,20 @@
   let recordingError = $state<string | null>(null);
   let showMeasureSelector = $state(false);
 
+  async function handleAutoStop(wavBlob: Blob) {
+    try {
+      // Stop engine transport
+      get(engine)?.stop();
+      get(engine)?.setMetronomeEnabled(false);
+
+      // Convert blob to File for addLayer()
+      const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' });
+      await addLayer(file);
+    } catch (err) {
+      recordingError = `Failed to save auto-stop recording: ${err}`;
+    }
+  }
+
   async function startRecording() {
     recordingError = null;
     try {
@@ -42,9 +56,12 @@
       const measureDuration = calculateMeasureDuration();
       const maxDuration = calculateRecordingDuration();
 
-      micRecorder = new MicRecorder((state) => {
-        recordingState = state;
-      });
+      micRecorder = new MicRecorder(
+        (state) => {
+          recordingState = state;
+        },
+        handleAutoStop
+      );
 
       // Pass measure info if recording by measures
       await micRecorder.startRecording(

@@ -22,6 +22,7 @@ export class MicRecorder {
   private audioBuffer: Float32Array[] = [];
   private sampleRate = 0;
   private onStateChange?: (state: RecordingState) => void;
+  private onAutoStop?: (blob: Blob) => void;
   private recordingStartTime = 0;
   private maxDuration: number | undefined;
   private timerInterval: number | undefined;
@@ -29,8 +30,9 @@ export class MicRecorder {
   private totalMeasures: number | undefined;
   private measureDuration: number | undefined;
 
-  constructor(onStateChange?: (state: RecordingState) => void) {
+  constructor(onStateChange?: (state: RecordingState) => void, onAutoStop?: (blob: Blob) => void) {
     this.onStateChange = onStateChange;
+    this.onAutoStop = onAutoStop;
   }
 
   async startRecording(maxDurationSec?: number, totalMeasures?: number, measureDuration?: number): Promise<void> {
@@ -81,7 +83,11 @@ export class MicRecorder {
 
         // Auto-stop if max duration reached
         if (this.maxDuration && elapsed >= this.maxDuration) {
-          this.stopRecording();
+          const blob = this.stopRecording();
+          // Call auto-stop callback to notify LayerList to save the recording
+          if (this.onAutoStop) {
+            this.onAutoStop(blob);
+          }
           return;
         }
 
