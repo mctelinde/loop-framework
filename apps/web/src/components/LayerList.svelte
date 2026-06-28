@@ -3,12 +3,14 @@
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
   import { engine } from '../lib/engineStore';
-  import { metronomeEnabled } from '../lib/transportStore';
+  import { metronomeEnabled, bpm, timeSig } from '../lib/transportStore';
+  import { recordingConfig, setMeasureCount, calculateMeasureDuration, calculateRecordingDuration, formatRecordingProgress } from '../lib/recordingStore';
   import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
 
   const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
+  const MEASURE_OPTIONS = [2, 4, 8, 16, 32];
 
   function filterAudioFiles(fileList: FileList | null): File[] {
     if (!fileList) return [];
@@ -26,8 +28,21 @@
   let micRecorder: MicRecorder | null = null;
   let recordingState = $state<RecordingState>({ isRecording: false, duration: 0 });
   let recordingError = $state<string | null>(null);
+  let showMeasureSelector = $state(false);
 
-  const MAX_RECORDING_DURATION = 30; // seconds
+  async function handleAutoStop(wavBlob: Blob) {
+    try {
+      // Stop engine transport
+      get(engine)?.stop();
+      get(engine)?.setMetronomeEnabled(false);
+
+      // Convert blob to File for addLayer()
+      const file = new File([wavBlob], `recording-${Date.now()}.wav`, { type: 'audio/wav' });
+      await addLayer(file);
+    } catch (err) {
+      recordingError = `Failed to save auto-stop recording: ${err}`;
+    }
+  }
 
   async function startRecording() {
     recordingError = null;
@@ -37,10 +52,23 @@
         await runCountIn();
       }
 
-      micRecorder = new MicRecorder((state) => {
-        recordingState = state;
-      });
-      await micRecorder.startRecording(MAX_RECORDING_DURATION);
+      const config = get(recordingConfig);
+      const measureDuration = calculateMeasureDuration();
+      const maxDuration = calculateRecordingDuration();
+
+      micRecorder = new MicRecorder(
+        (state) => {
+          recordingState = state;
+        },
+        handleAutoStop
+      );
+
+      // Pass measure info if recording by measures
+      await micRecorder.startRecording(
+        maxDuration,
+        config.mode === 'measures' ? config.measureCount : undefined,
+        config.mode === 'measures' ? measureDuration : undefined
+      );
 
       // Start engine transport if metronome is enabled
       // This makes the metronome audible during recording
@@ -83,9 +111,15 @@
     get(engine)?.setMetronomeEnabled(false);
   }
 
-  function formatTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = Math.floor(seconds % 60);
+  function formatRecordingDisplay(state: RecordingState): string {
+    const config = get(recordingConfig);
+    if (config.mode === 'measures' && state.totalMeasures && state.currentMeasure) {
+      return `Measure ${Math.min(state.currentMeasure, state.totalMeasures)} of ${state.totalMeasures}`;
+    }
+    
+    // Fallback to time display
+    const m = Math.floor(state.duration / 60);
+    const s = Math.floor(state.duration % 60);
     return `${m}:${s.toString().padStart(2, '0')}`;
   }
 
@@ -234,23 +268,51 @@
 >
   <!-- ── Header ──────────────────────────────────────────────────────── -->
   <div class="list-header">
-    <span class="header-title">
-      Layers
-      {#if $importing > 0}
-        <span class="loading-pill">
-          <span class="spinner"></span>
-          {$importing}
-        </span>
-      {/if}
-    </span>
+    <svg class="layers-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" />
+      <path d="M2 17l10 5 10-5" />
+      <path d="M2 12l10 5 10-5" />
+    </svg>
+    {#if $importing > 0}
+      <span class="loading-pill">
+        <span class="spinner"></span>
+        {$importing}
+      </span>
+    {/if}
     <div class="header-buttons">
       {#if recordingState.isRecording}
         <button class="record-btn recording" disabled title="Recording">
-          ● REC {formatTime(recordingState.duration)}
+          ● REC {formatRecordingDisplay(recordingState)}
         </button>
         <button class="stop-btn" onclick={stopRecording} title="Stop recording">⏹</button>
         <button class="cancel-btn" onclick={cancelRecording} title="Cancel recording">✕</button>
       {:else}
+        <div class="measure-selector-wrapper">
+          <button 
+            class="measure-toggle-btn" 
+            onclick={() => (showMeasureSelector = !showMeasureSelector)}
+            title="Select recording length"
+          >
+            {$recordingConfig.measureCount}m
+          </button>
+          {#if showMeasureSelector}
+            <div class="measure-dropdown">
+              {#each MEASURE_OPTIONS as measures}
+                <button
+                  class="measure-option"
+                  class:selected={$recordingConfig.measureCount === measures}
+                  onclick={() => {
+                    setMeasureCount(measures);
+                    showMeasureSelector = false;
+                  }}
+                  title={`Record ${measures} measures`}
+                >
+                  {measures}m
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
         <button class="record-btn" onclick={startRecording} title="Record from microphone">
           ◐ Rec
         </button>
@@ -362,16 +424,14 @@
   .list-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 0.5rem;
     padding: 0.6rem 0.75rem 0.5rem;
     border-bottom: 1px solid #2a2a2a;
+    min-width: 0;
   }
 
-  .header-title {
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+  .layers-icon {
+    flex-shrink: 0;
     color: #555;
   }
 
@@ -384,6 +444,10 @@
     color: #4caf50;
     cursor: pointer;
     user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
   .add-btn:hover { background: #243024; color: #66bb6a; }
 
@@ -391,6 +455,79 @@
     display: flex;
     align-items: center;
     gap: 0.3rem;
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .measure-selector-wrapper {
+    position: relative;
+  }
+
+  .measure-toggle-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    background: #1a1e2a;
+    border: 1px solid #2e3a4a;
+    border-radius: 4px;
+    color: #7dd3fc;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s, color 0.2s;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+  }
+
+  .measure-toggle-btn:hover {
+    background: #222a38;
+    color: #a5e3ff;
+  }
+
+  .measure-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    border-radius: 4px;
+    margin-top: 0.2rem;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    min-width: 60px;
+  }
+
+  .measure-option {
+    display: block;
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    background: transparent;
+    border: none;
+    color: #7dd3fc;
+    font-size: 0.7rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.1s;
+  }
+
+  .measure-option:first-child {
+    border-radius: 3px 3px 0 0;
+  }
+
+  .measure-option:last-child {
+    border-radius: 0 0 3px 3px;
+  }
+
+  .measure-option:hover {
+    background: #2a2a3a;
+    color: #a5e3ff;
+  }
+
+  .measure-option.selected {
+    background: #1e3a4a;
+    color: #4caf50;
+    font-weight: 600;
   }
 
   .record-btn {
@@ -403,6 +540,10 @@
     cursor: pointer;
     user-select: none;
     transition: background 0.2s, color 0.2s;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .record-btn:hover:not(:disabled) {
@@ -422,14 +563,18 @@
   }
 
   .stop-btn {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
     background: #4caf50;
     border: 1px solid #45a049;
     border-radius: 4px;
     color: #fff;
     cursor: pointer;
     user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .stop-btn:hover {
@@ -437,14 +582,18 @@
   }
 
   .cancel-btn {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
     background: #555;
     border: 1px solid #777;
     border-radius: 4px;
     color: #fff;
     cursor: pointer;
     user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .cancel-btn:hover {
