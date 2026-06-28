@@ -427,6 +427,10 @@
     color: #4caf50;
     cursor: pointer;
     user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
   .add-btn:hover { background: #243024; color: #66bb6a; }
 
@@ -450,6 +454,10 @@
     cursor: pointer;
     user-select: none;
     transition: background 0.2s, color 0.2s;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .measure-toggle-btn:hover {
@@ -512,6 +520,10 @@
     cursor: pointer;
     user-select: none;
     transition: background 0.2s, color 0.2s;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .record-btn:hover:not(:disabled) {
@@ -539,6 +551,10 @@
     color: #fff;
     cursor: pointer;
     user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .stop-btn:hover {
@@ -554,6 +570,10 @@
     color: #fff;
     cursor: pointer;
     user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
   }
 
   .cancel-btn:hover {
