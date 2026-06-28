@@ -457,7 +457,7 @@
     min-width: 0;
     flex: 1;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: center;
   }
 
   .measure-selector-wrapper {
