@@ -268,15 +268,12 @@
 >
   <!-- ── Header ──────────────────────────────────────────────────────── -->
   <div class="list-header">
-    <span class="header-title">
-      Layers
-      {#if $importing > 0}
-        <span class="loading-pill">
-          <span class="spinner"></span>
-          {$importing}
-        </span>
-      {/if}
-    </span>
+    {#if $importing > 0}
+      <span class="loading-pill">
+        <span class="spinner"></span>
+        {$importing}
+      </span>
+    {/if}
     <div class="header-buttons">
       {#if recordingState.isRecording}
         <button class="record-btn recording" disabled title="Recording">
