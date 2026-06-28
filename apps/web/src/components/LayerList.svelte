@@ -547,9 +547,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 120px;
+    max-width: 50px;
     min-width: 0;
-    flex-shrink: 1;
+    flex: 0 1 auto;
   }
 
   .record-btn:hover:not(:disabled) {
