@@ -422,9 +422,10 @@
   .list-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 0.5rem;
     padding: 0.6rem 0.75rem 0.5rem;
     border-bottom: 1px solid #2a2a2a;
+    min-width: 0;
   }
 
   .header-title {
@@ -433,6 +434,7 @@
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: #555;
+    flex-shrink: 0;
   }
 
   .add-btn {
@@ -457,6 +459,7 @@
     gap: 0.3rem;
     min-width: 0;
     flex: 1;
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 
