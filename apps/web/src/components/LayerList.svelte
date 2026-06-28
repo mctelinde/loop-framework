@@ -442,7 +442,7 @@
 
   .measure-toggle-btn {
     font-size: 0.75rem;
-    padding: 0.2rem 0.45rem;
+    padding: 0.2rem 0.55rem;
     background: #1a1e2a;
     border: 1px solid #2e3a4a;
     border-radius: 4px;
