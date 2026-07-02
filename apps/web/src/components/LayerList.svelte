@@ -457,7 +457,8 @@
     gap: 0.3rem;
     min-width: 0;
     flex-wrap: wrap;
-    justify-content: flex-start;
+    justify-content: flex-end;
+    margin-left: auto;
   }
 
   .measure-selector-wrapper {
