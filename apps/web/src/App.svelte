@@ -6,7 +6,7 @@
   import LayerStrip from './components/LayerStrip.svelte';
   import DrumPadStrip from './components/DrumPadStrip.svelte';
   import SessionControls from './components/SessionControls.svelte';
-  import { layers, importing } from './lib/layerStore';
+  import { layers, importing, addLayer, addDrumPadLayer } from './lib/layerStore';
 
   // ── Global drag overlay ────────────────────────────────────────────────────
   // Shows when a user drags files anywhere over the app window.
@@ -28,6 +28,30 @@
   function onWindowDrop() { globalDragCounter = 0; globalDragOver = false; }
 
   let initError = $state<string | null>(null);
+  let emptyStateError = $state<string | null>(null);
+
+  const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
+
+  function filterAudioFiles(fileList: FileList | null): File[] {
+    if (!fileList) return [];
+    return Array.from(fileList).filter(
+      (f) => ACCEPTED_MIME.includes(f.type) || /\.(wav|mp3|ogg)$/i.test(f.name),
+    );
+  }
+
+  async function onEmptyStateAudioInput(e: Event) {
+    emptyStateError = null;
+    const input = e.currentTarget as HTMLInputElement;
+    const files = filterAudioFiles(input.files);
+    for (const file of files) {
+      try {
+        await addLayer(file);
+      } catch (err) {
+        emptyStateError = `Failed to load "${file.name}": ${err}`;
+      }
+    }
+    input.value = '';
+  }
 
   onMount(async () => {
     try {
@@ -72,7 +96,28 @@
             <DrumPadStrip {layer} />
           {/if}
         {:else}
-          <p class="placeholder">Add an Audio or Drum Pad layer to get started</p>
+          <div class="empty-actions">
+            <p class="empty-title">Start building your loop</p>
+            <div class="empty-action-buttons">
+              <label class="empty-action audio" title="Add audio file">
+                + Add Audio Layer
+                <input
+                  type="file"
+                  accept=".wav,.mp3,.ogg,audio/*"
+                  multiple
+                  onchange={onEmptyStateAudioInput}
+                  class="visually-hidden"
+                />
+              </label>
+              <button class="empty-action drum" onclick={addDrumPadLayer} title="Add drum pad layer">
+                + Add Drum Pad
+              </button>
+            </div>
+            <p class="empty-hint">WAV · MP3 · OGG</p>
+            {#if emptyStateError}
+              <p class="empty-error" role="alert">{emptyStateError}</p>
+            {/if}
+          </div>
         {/each}
       </div>
     </div>
@@ -211,11 +256,92 @@
     overflow-x: auto;
   }
 
-  .placeholder {
-    color: #444;
-    font-size: 0.875rem;
-    text-align: center;
+  .empty-actions {
     margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.85rem;
+    text-align: center;
+  }
+
+  .empty-title {
+    color: #d1d5db;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .empty-action-buttons {
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .empty-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 180px;
+    padding: 0.95rem 1.1rem;
+    border-radius: 10px;
+    border: 1px solid;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+
+  .empty-action.audio {
+    background: #1e2a1e;
+    border-color: #2e4a2e;
+    color: #7ddf82;
+  }
+
+  .empty-action.audio:hover {
+    background: #253325;
+    border-color: #3d5e3d;
+    color: #a5f7a8;
+  }
+
+  .empty-action.drum {
+    background: #1f1830;
+    border-color: #3b2f5c;
+    color: #d7c6ff;
+  }
+
+  .empty-action.drum:hover {
+    background: #29203b;
+    border-color: #514176;
+    color: #efe7ff;
+  }
+
+  .empty-hint {
+    color: #6b7280;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+  }
+
+  .empty-error {
+    color: #f87171;
+    font-size: 0.8rem;
+    max-width: 32rem;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  @media (max-width: 720px) {
+    .empty-action {
+      min-width: min(260px, 90vw);
+      width: min(260px, 90vw);
+    }
   }
 
   /* ── Global drop overlay ── */

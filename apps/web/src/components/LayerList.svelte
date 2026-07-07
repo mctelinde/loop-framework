@@ -365,19 +365,21 @@
         <button class="record-btn" onclick={startRecording} title="Record from microphone">
           ◐ Rec
         </button>
-        <button class="drum-btn" onclick={addDrumPadLayer} title="Add drum pad layer">
-          + Drum
-        </button>
-        <label class="add-btn" title="Add audio file">
-          + Audio
-          <input
-            type="file"
-            accept=".wav,.mp3,.ogg,audio/*"
-            multiple
-            onchange={onFileInput}
-            class="visually-hidden"
-          />
-        </label>
+        {#if $layers.length > 0}
+          <button class="compact-add-btn compact-add-drum" onclick={addDrumPadLayer} title="Add drum pad layer">
+            +D
+          </button>
+          <label class="compact-add-btn compact-add-audio" title="Add audio file">
+            +A
+            <input
+              type="file"
+              accept=".wav,.mp3,.ogg,audio/*"
+              multiple
+              onchange={onFileInput}
+              class="visually-hidden"
+            />
+          </label>
+        {/if}
       {/if}
     </div>
   </div>
@@ -395,17 +397,7 @@
   {/if}
 
   <!-- ── Layer rows ───────────────────────────────────────────────────── -->
-  {#if $layers.length === 0}
-    <div class="empty-state">
-      <svg viewBox="0 0 40 40" aria-hidden="true">
-        <rect x="4" y="12" width="32" height="6" rx="2" opacity="0.3"/>
-        <rect x="4" y="22" width="32" height="6" rx="2" opacity="0.2"/>
-        <rect x="4" y="32" width="24" height="6" rx="2" opacity="0.1"/>
-      </svg>
-      <p>Drop audio files here or click <strong>+ Add</strong></p>
-      <p class="hint">WAV · MP3 · OGG</p>
-    </div>
-  {:else}
+  {#if $layers.length > 0}
     {#each $layers as layer, index (layer.id)}
       <!-- Per-row file drop indicator (insert before this row) -->
       {#if rowDragOverIndex === index}
@@ -490,37 +482,42 @@
     color: #555;
   }
 
-  .add-btn {
+  .compact-add-btn {
     font-size: 0.75rem;
     padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    font-weight: 600;
+  }
+
+  .compact-add-audio {
     background: #1e2a1e;
     border: 1px solid #2e4a2e;
-    border-radius: 4px;
     color: #4caf50;
-    cursor: pointer;
-    user-select: none;
-    height: 24px;
-    line-height: 1.2;
-    display: flex;
-    align-items: center;
   }
-  .add-btn:hover { background: #243024; color: #66bb6a; }
 
-  .drum-btn {
-    font-size: 0.75rem;
-    padding: 0.2rem 0.55rem;
+  .compact-add-audio:hover {
+    background: #243024;
+    color: #66bb6a;
+  }
+
+  .compact-add-drum {
     background: #1f1830;
     border: 1px solid #3b2f5c;
-    border-radius: 4px;
     color: #c4b5fd;
-    cursor: pointer;
-    user-select: none;
-    height: 24px;
-    line-height: 1.2;
-    display: flex;
-    align-items: center;
   }
-  .drum-btn:hover { background: #29203b; color: #ddd6fe; }
+
+  .compact-add-drum:hover {
+    background: #29203b;
+    color: #ddd6fe;
+  }
 
   .header-buttons {
     display: flex;
@@ -710,27 +707,6 @@
     clip: rect(0,0,0,0);
     white-space: nowrap;
   }
-
-  /* ── Empty state ── */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 2.5rem 1rem;
-    color: #444;
-    text-align: center;
-    font-size: 0.8rem;
-  }
-
-  .empty-state svg {
-    width: 40px;
-    height: 40px;
-    fill: #333;
-    margin-bottom: 0.25rem;
-  }
-
-  .hint { font-size: 0.7rem; color: #333; }
 
   .layer-list.panel-drag-over {
     background: #1a2a1a;
