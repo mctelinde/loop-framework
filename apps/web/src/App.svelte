@@ -4,6 +4,7 @@
   import Transport from './components/Transport.svelte';
   import LayerList from './components/LayerList.svelte';
   import LayerStrip from './components/LayerStrip.svelte';
+  import DrumPadStrip from './components/DrumPadStrip.svelte';
   import SessionControls from './components/SessionControls.svelte';
   import { layers, importing } from './lib/layerStore';
 
@@ -65,9 +66,13 @@
       <LayerList />
       <div class="mixer-area">
         {#each $layers as layer (layer.id)}
-          <LayerStrip {layer} />
+          {#if layer.type === 'audio'}
+            <LayerStrip {layer} />
+          {:else}
+            <DrumPadStrip {layer} />
+          {/if}
         {:else}
-          <p class="placeholder">Add audio files to get started</p>
+          <p class="placeholder">Add an Audio or Drum Pad layer to get started</p>
         {/each}
       </div>
     </div>

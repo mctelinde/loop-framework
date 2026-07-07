@@ -9,21 +9,29 @@ import { writable, derived, get, type Readable } from 'svelte/store';
 import { bpm, timeSig } from './transportStore';
 
 export type RecordingMode = 'measures' | 'time';
+export type QuantizeMode = 'off' | 'beat' | 'eighth' | 'sixteenth';
+export type QuantizeStrength = 'light' | 'medium' | 'hard';
 
 export interface RecordingConfig {
   mode: RecordingMode;
   measureCount: number;
   timeBased: number; // fallback duration in seconds
+  quantizeMode: QuantizeMode;
+  quantizeStrength: QuantizeStrength;
 }
 
 // Default 8 measures recording
 const DEFAULT_MEASURE_COUNT = 8;
 const STORAGE_KEY = 'lf-recording-measure-count';
+const QUANTIZE_MODE_KEY = 'lf-quantize-mode';
+const QUANTIZE_STRENGTH_KEY = 'lf-quantize-strength';
 
 const _config = writable<RecordingConfig>({
   mode: 'measures',
   measureCount: loadSavedMeasureCount(),
   timeBased: 30,
+  quantizeMode: loadSavedQuantizeMode(),
+  quantizeStrength: loadSavedQuantizeStrength(),
 });
 
 export const recordingConfig: Readable<RecordingConfig> = derived(_config, ($c) => $c);
@@ -47,6 +55,34 @@ function saveMeasureCount(count: number): void {
   }
 }
 
+function loadSavedQuantizeMode(): QuantizeMode {
+  if (typeof window === 'undefined') return 'sixteenth';
+  const saved = localStorage.getItem(QUANTIZE_MODE_KEY);
+  if (saved === 'off' || saved === 'beat' || saved === 'eighth' || saved === 'sixteenth') {
+    return saved;
+  }
+  return 'sixteenth';
+}
+
+function saveQuantizeMode(mode: QuantizeMode): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(QUANTIZE_MODE_KEY, mode);
+  }
+}
+
+function loadSavedQuantizeStrength(): QuantizeStrength {
+  if (typeof window === 'undefined') return 'medium';
+  const saved = localStorage.getItem(QUANTIZE_STRENGTH_KEY);
+  if (saved === 'light' || saved === 'medium' || saved === 'hard') return saved;
+  return 'medium';
+}
+
+function saveQuantizeStrength(strength: QuantizeStrength): void {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(QUANTIZE_STRENGTH_KEY, strength);
+  }
+}
+
 /**
  * Set number of measures for recording
  */
@@ -61,6 +97,42 @@ export function setMeasureCount(count: number): void {
  */
 export function setRecordingMode(mode: RecordingMode): void {
   _config.update((c) => ({ ...c, mode }));
+}
+
+export function setQuantizeMode(mode: QuantizeMode): void {
+  _config.update((c) => ({ ...c, quantizeMode: mode }));
+  saveQuantizeMode(mode);
+}
+
+export function setQuantizeStrength(strength: QuantizeStrength): void {
+  _config.update((c) => ({ ...c, quantizeStrength: strength }));
+  saveQuantizeStrength(strength);
+}
+
+function quantizeStrengthValue(strength: QuantizeStrength): number {
+  if (strength === 'light') return 0.45;
+  if (strength === 'hard') return 1;
+  return 0.75;
+}
+
+export function quantizeTime(seconds: number): number {
+  const config = get(_config);
+  if (config.quantizeMode === 'off') return Math.max(0, seconds);
+  const currentBpm = get(bpm);
+  if (!currentBpm || currentBpm <= 0) return Math.max(0, seconds);
+
+  const beat = 60 / currentBpm;
+  const step =
+    config.quantizeMode === 'beat'
+      ? beat
+      : config.quantizeMode === 'eighth'
+        ? beat / 2
+        : beat / 4;
+
+  if (step <= 0) return Math.max(0, seconds);
+  const nearest = Math.round(seconds / step) * step;
+  const strength = quantizeStrengthValue(config.quantizeStrength);
+  return Math.max(0, seconds + (nearest - seconds) * strength);
 }
 
 /**

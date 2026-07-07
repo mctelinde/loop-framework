@@ -2,9 +2,9 @@
   import WaveformCanvas from './WaveformCanvas.svelte';
   import Knob from './Knob.svelte';
   import { setVolume, setPan, setMuted, setSoloed, setLoopRegion, replaceLayerAudio } from '../lib/layerStore';
-  import type { LayerState } from '../lib/layerStore';
+  import type { AudioLayerState } from '../lib/layerStore';
 
-  interface Props { layer: LayerState; }
+  interface Props { layer: AudioLayerState; }
   let { layer }: Props = $props();
 
   // ── Drop-to-replace ────────────────────────────────────────────────────────

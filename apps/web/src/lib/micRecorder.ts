@@ -226,7 +226,11 @@ export class MicRecorder {
       blockAlign
     );
 
-    return new Blob([wavHeader, pcm16Data], { type: 'audio/wav' });
+    const headerBytes = new Uint8Array(wavHeader.byteLength);
+    headerBytes.set(wavHeader);
+    const pcmBytes = new Uint8Array(pcm16Data.byteLength);
+    pcmBytes.set(pcm16Data);
+    return new Blob([headerBytes.buffer, pcmBytes.buffer], { type: 'audio/wav' });
   }
 
   private createWAVHeader(
