@@ -16,6 +16,7 @@ import { zip, unzip, strToU8, strFromU8 } from 'fflate';
 import { get } from 'svelte/store';
 import { layers, clearAllLayers, addLayerFromBytes, type RestoredLayerSettings } from './layerStore';
 import { bpm, timeSig, setBpm, setTimeSig, TIME_SIGNATURES } from './transportStore';
+import type { AudioLayerState } from './layerStore';
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ interface ProjectJson {
 // ── Save (.loopfw export) ─────────────────────────────────────────────────────
 
 function buildProjectJson(name: string): { json: ProjectJson; layers: ProjectLayer[] } {
-  const currentLayers = get(layers);
+  const currentLayers = get(layers).filter((l): l is AudioLayerState => l.type === 'audio');
   const projectLayers: ProjectLayer[] = currentLayers.map((l, i) => ({
     index: i,
     audioFile: `audio/${i}-${sanitizeFilename(l.originalFileName)}`,
@@ -73,7 +74,7 @@ function buildProjectJson(name: string): { json: ProjectJson; layers: ProjectLay
 }
 
 export async function saveSession(name = 'Untitled'): Promise<void> {
-  const currentLayers = get(layers);
+  const currentLayers = get(layers).filter((l): l is AudioLayerState => l.type === 'audio');
   const { json, layers: projectLayers } = buildProjectJson(name);
 
   const files: Record<string, Uint8Array> = {
@@ -176,7 +177,9 @@ function sanitizeFilename(name: string): string {
 }
 
 function triggerDownload(data: Uint8Array, filename: string): void {
-  const blob = new Blob([data], { type: 'application/zip' });
+  const bytes = new Uint8Array(data.byteLength);
+  bytes.set(data);
+  const blob = new Blob([bytes.buffer], { type: 'application/zip' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

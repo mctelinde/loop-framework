@@ -1,16 +1,27 @@
 <script lang="ts">
-  import { layers, addLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
+  import { layers, addLayer, addDrumPadLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
   import { engine } from '../lib/engineStore';
-  import { metronomeEnabled, bpm, timeSig } from '../lib/transportStore';
-  import { recordingConfig, setMeasureCount, calculateMeasureDuration, calculateRecordingDuration, formatRecordingProgress } from '../lib/recordingStore';
+  import { metronomeEnabled } from '../lib/transportStore';
+  import {
+    recordingConfig,
+    setMeasureCount,
+    calculateMeasureDuration,
+    calculateRecordingDuration,
+    setQuantizeMode,
+    setQuantizeStrength,
+    type QuantizeMode,
+    type QuantizeStrength,
+  } from '../lib/recordingStore';
   import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
 
   const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
   const MEASURE_OPTIONS = [2, 4, 8, 16, 32];
+  const QUANTIZE_MODES: QuantizeMode[] = ['off', 'beat', 'eighth', 'sixteenth'];
+  const QUANTIZE_STRENGTHS: QuantizeStrength[] = ['light', 'medium', 'hard'];
 
   function filterAudioFiles(fileList: FileList | null): File[] {
     if (!fileList) return [];
@@ -29,6 +40,7 @@
   let recordingState = $state<RecordingState>({ isRecording: false, duration: 0 });
   let recordingError = $state<string | null>(null);
   let showMeasureSelector = $state(false);
+  let showSettings = $state(false);
 
   async function handleAutoStop(wavBlob: Blob) {
     try {
@@ -204,10 +216,10 @@
 
   // ── Inline rename ──────────────────────────────────────────────────────────
 
-  let renamingId = $state<number | null>(null);
+  let renamingId = $state<string | null>(null);
   let renameValue = $state('');
 
-  function startRename(id: number, currentName: string) {
+  function startRename(id: string, currentName: string) {
     renamingId = id;
     renameValue = currentName;
   }
@@ -313,11 +325,51 @@
             </div>
           {/if}
         </div>
+        <div class="measure-selector-wrapper">
+          <button
+            class="measure-toggle-btn"
+            onclick={() => (showSettings = !showSettings)}
+            title="Drum quantization settings"
+          >
+            ⚙
+          </button>
+          {#if showSettings}
+            <div class="measure-dropdown settings-dropdown">
+              <label class="settings-label">
+                Quantize
+                <select
+                  class="settings-select"
+                  value={$recordingConfig.quantizeMode}
+                  onchange={(e) => setQuantizeMode(e.currentTarget.value as QuantizeMode)}
+                >
+                  {#each QUANTIZE_MODES as mode}
+                    <option value={mode}>{mode}</option>
+                  {/each}
+                </select>
+              </label>
+              <label class="settings-label">
+                Strength
+                <select
+                  class="settings-select"
+                  value={$recordingConfig.quantizeStrength}
+                  onchange={(e) => setQuantizeStrength(e.currentTarget.value as QuantizeStrength)}
+                >
+                  {#each QUANTIZE_STRENGTHS as strength}
+                    <option value={strength}>{strength}</option>
+                  {/each}
+                </select>
+              </label>
+            </div>
+          {/if}
+        </div>
         <button class="record-btn" onclick={startRecording} title="Record from microphone">
           ◐ Rec
         </button>
+        <button class="drum-btn" onclick={addDrumPadLayer} title="Add drum pad layer">
+          + Drum
+        </button>
         <label class="add-btn" title="Add audio file">
-          + Add
+          + Audio
           <input
             type="file"
             accept=".wav,.mp3,.ogg,audio/*"
@@ -391,6 +443,9 @@
             >{layer.name}</button>
           {/if}
         </div>
+        <span class="type-pill" class:drum={layer.type === 'drumPad'}>
+          {layer.type === 'drumPad' ? 'Drum' : 'Audio'}
+        </span>
 
         <button
           class="remove-btn"
@@ -451,6 +506,22 @@
   }
   .add-btn:hover { background: #243024; color: #66bb6a; }
 
+  .drum-btn {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    background: #1f1830;
+    border: 1px solid #3b2f5c;
+    border-radius: 4px;
+    color: #c4b5fd;
+    cursor: pointer;
+    user-select: none;
+    height: 24px;
+    line-height: 1.2;
+    display: flex;
+    align-items: center;
+  }
+  .drum-btn:hover { background: #29203b; color: #ddd6fe; }
+
   .header-buttons {
     display: flex;
     align-items: center;
@@ -497,6 +568,32 @@
     z-index: 10;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
     min-width: 60px;
+  }
+
+  .settings-dropdown {
+    min-width: 150px;
+    padding: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .settings-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    color: #9aa7c2;
+    font-size: 0.65rem;
+    letter-spacing: 0.02em;
+  }
+
+  .settings-select {
+    background: #111;
+    border: 1px solid #2b3344;
+    border-radius: 4px;
+    color: #d4e3ff;
+    font-size: 0.68rem;
+    padding: 0.2rem 0.35rem;
   }
 
   .measure-option {
@@ -705,6 +802,22 @@
   .layer-name {
     flex: 1;
     min-width: 0;
+  }
+
+  .type-pill {
+    flex-shrink: 0;
+    font-size: 0.62rem;
+    color: #7eb4de;
+    border: 1px solid #2b4a66;
+    background: #172331;
+    border-radius: 999px;
+    padding: 0.06rem 0.35rem;
+  }
+
+  .type-pill.drum {
+    color: #d8b4fe;
+    border-color: #4b3567;
+    background: #21192d;
   }
 
   .name-btn {
