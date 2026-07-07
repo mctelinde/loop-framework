@@ -102,7 +102,7 @@ export function triggerDrumPadHit(
 
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
-  osc.type = 'triangle';
+  osc.type = 'sine';
   osc.frequency.setValueAtTime(keyIndex === 4 ? 180 : 130, time);
   osc.frequency.exponentialRampToValueAtTime(keyIndex === 4 ? 95 : 70, time + 0.2);
   gain.gain.setValueAtTime(0.0001, time);
@@ -116,41 +116,88 @@ export function triggerDrumPadHit(
 function renderHit(buffer: Float32Array, sampleRate: number, stroke: DrumStroke): void {
   const start = Math.floor(stroke.time * sampleRate);
   const v = Math.max(0.1, Math.min(1.25, stroke.velocity));
+  const maxSamples = buffer.length - start;
+  if (maxSamples <= 0) return;
 
-  for (let i = 0; i < sampleRate * 0.4; i++) {
-    const index = start + i;
-    if (index >= buffer.length) break;
-    const t = i / sampleRate;
+  // Exponential ramp helper matching Web Audio's exponentialRampToValueAtTime:
+  // f(t) = a * (b/a)^(t/T)
+  const expRamp = (a: number, b: number, t: number, T: number) =>
+    t <= 0 ? a : t >= T ? b : a * Math.pow(b / a, t / T);
 
-    let s = 0;
-    switch (stroke.padIndex) {
-      case 0: {
-        const freq = 160 * Math.exp(-18 * t) + 38;
-        const env = Math.exp(-16 * t);
-        s = Math.sin(2 * Math.PI * freq * t) * env;
-        break;
+  switch (stroke.padIndex) {
+    case 0: { // Kick: sine sweep 140→45 Hz over 150ms, 4ms attack / 200ms decay
+      const peak = 0.8 * v;
+      const limit = Math.min(maxSamples, Math.ceil(0.23 * sampleRate));
+      let phase = 0;
+      for (let i = 0; i < limit; i++) {
+        const t = i / sampleRate;
+        const freq = t < 0.15 ? expRamp(140, 45, t, 0.15) : 45;
+        phase += (2 * Math.PI * freq) / sampleRate;
+        const env = t < 0.004
+          ? expRamp(0.0001, peak, t, 0.004)
+          : expRamp(peak, 0.0001, t - 0.004, 0.196);
+        buffer[start + i] = Math.max(-1, Math.min(1, buffer[start + i] + Math.sin(phase) * env));
       }
-      case 1:
-      case 6: {
-        const env = Math.exp(-18 * t);
-        s = (Math.random() * 2 - 1) * env;
-        break;
+      break;
+    }
+    case 1: // Snare
+    case 6: { // Clap: bandpass noise at 1800/2200 Hz
+      const cf = stroke.padIndex === 1 ? 1800 : 2200;
+      const peak = 0.45 * v;
+      const limit = Math.min(maxSamples, Math.ceil(0.22 * sampleRate));
+      // Difference-of-lowpass approximates bandpass
+      let lp1 = 0, lp2 = 0;
+      const a1 = Math.exp((-2 * Math.PI * cf * 2) / sampleRate);
+      const a2 = Math.exp((-2 * Math.PI * cf * 0.5) / sampleRate);
+      for (let i = 0; i < limit; i++) {
+        const t = i / sampleRate;
+        const env = t < 0.005
+          ? expRamp(0.0001, peak, t, 0.005)
+          : expRamp(peak, 0.0001, t - 0.005, 0.175);
+        const noise = Math.random() * 2 - 1;
+        lp1 = a1 * lp1 + (1 - a1) * noise;
+        lp2 = a2 * lp2 + (1 - a2) * noise;
+        buffer[start + i] = Math.max(-1, Math.min(1, buffer[start + i] + (lp2 - lp1) * 4 * env));
       }
-      case 2:
-      case 3:
-      case 7: {
-        const env = Math.exp(-(stroke.padIndex === 3 ? 9 : 20) * t);
-        s = (Math.random() * 2 - 1) * env * 0.65;
-        break;
+      break;
+    }
+    case 2: // Closed hi-hat
+    case 3: // Open hi-hat
+    case 7: { // Ride: first-order highpass noise
+      const hpCutoff = stroke.padIndex === 3 ? 5500 : 7000;
+      const decay = stroke.padIndex === 3 ? 0.35 : 0.12;
+      const peak = 0.28 * v;
+      const limit = Math.min(maxSamples, Math.ceil((decay + 0.05) * sampleRate));
+      const alpha = Math.exp((-2 * Math.PI * hpCutoff) / sampleRate);
+      let y = 0, xPrev = 0;
+      for (let i = 0; i < limit; i++) {
+        const t = i / sampleRate;
+        const env = t < 0.002
+          ? expRamp(0.0001, peak, t, 0.002)
+          : expRamp(peak, 0.0001, t - 0.002, decay);
+        const x = Math.random() * 2 - 1;
+        y = alpha * (y + x - xPrev); // 1-pole highpass: y[n] = α(y[n-1] + x[n] - x[n-1])
+        xPrev = x;
+        buffer[start + i] = Math.max(-1, Math.min(1, buffer[start + i] + y * env));
       }
-      default: {
-        const base = stroke.padIndex === 4 ? 180 : 140;
-        const env = Math.exp(-10 * t);
-        s = Math.sin(2 * Math.PI * base * t) * env;
+      break;
+    }
+    default: { // Toms (4, 5): sine sweep matching live oscillator
+      const baseFreq = stroke.padIndex === 4 ? 180 : 130;
+      const endFreq = stroke.padIndex === 4 ? 95 : 70;
+      const peak = 0.35 * v;
+      const limit = Math.min(maxSamples, Math.ceil(0.3 * sampleRate));
+      let phase = 0;
+      for (let i = 0; i < limit; i++) {
+        const t = i / sampleRate;
+        const freq = t < 0.2 ? expRamp(baseFreq, endFreq, t, 0.2) : endFreq;
+        phase += (2 * Math.PI * freq) / sampleRate;
+        const env = t < 0.006
+          ? expRamp(0.0001, peak, t, 0.006)
+          : expRamp(peak, 0.0001, t - 0.006, 0.254);
+        buffer[start + i] = Math.max(-1, Math.min(1, buffer[start + i] + Math.sin(phase) * env));
       }
     }
-
-    buffer[index] = Math.max(-1, Math.min(1, buffer[index] + s * 0.55 * v));
   }
 }
 
@@ -163,12 +210,14 @@ function pcm16FromFloat(data: Float32Array): Int16Array {
   return out;
 }
 
-export function renderDrumStrokesToWav(strokes: DrumStroke[]): Uint8Array {
+export function renderDrumStrokesToWav(strokes: DrumStroke[], targetDuration?: number): Uint8Array {
   const sampleRate = 44_100;
   const beatSeconds = 60 / Math.max(1, get(bpm));
   const minDuration = beatSeconds * 4;
   const maxTime = strokes.reduce((m, s) => Math.max(m, s.time), 0);
-  const duration = Math.max(minDuration, maxTime + 1);
+  // Honour the caller's target duration (measure-snapped) so all drum takes share
+  // the same loop length and stay in sync on playback.
+  const duration = targetDuration ?? Math.max(minDuration, maxTime + 1);
 
   const mono = new Float32Array(Math.ceil(duration * sampleRate));
   for (const stroke of strokes) renderHit(mono, sampleRate, stroke);

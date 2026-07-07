@@ -13,6 +13,7 @@
   import { engine } from '../lib/engineStore';
   import { get } from 'svelte/store';
   import { DRUM_PAD_KEYS, triggerDrumPadHit, quantizeStrokes, renderDrumStrokesToWav } from '../lib/drumPadAudio';
+  import { calculateRecordingDuration } from '../lib/recordingStore';
 
   interface Props { layer: DrumPadLayerState; }
   let { layer }: Props = $props();
@@ -21,6 +22,9 @@
   let recordStartMs = $state(0);
   let rawStrokes = $state<DrumStroke[]>([]);
   let recordError = $state<string | null>(null);
+  // Target duration is snapped to measure count at record-start time.
+  let recordTargetDuration = 0;
+  let autoStopTimer: ReturnType<typeof setTimeout> | undefined;
 
   function currentCtx(): AudioContext | null {
     return get(engine)?.getAudioContext() ?? null;
@@ -29,7 +33,7 @@
   function trigger(index: number): void {
     const ctx = currentCtx();
     if (!ctx) return;
-    triggerDrumPadHit(ctx, index, layer.volume);
+    triggerDrumPadHit(ctx, index, 1);
     if (!recording) return;
     rawStrokes = [
       ...rawStrokes,
@@ -46,11 +50,22 @@
     rawStrokes = [];
     recording = true;
     recordStartMs = Date.now();
+    recordTargetDuration = calculateRecordingDuration();
+
+    if (recordTargetDuration > 0) {
+      autoStopTimer = setTimeout(() => {
+        if (recording) stopRecord();
+      }, recordTargetDuration * 1000);
+    }
   }
 
   async function stopRecord(): Promise<void> {
     if (!recording) return;
     recording = false;
+    if (autoStopTimer !== undefined) {
+      clearTimeout(autoStopTimer);
+      autoStopTimer = undefined;
+    }
     if (rawStrokes.length === 0) {
       updateDrumPadStrokes(layer.id, []);
       return;
@@ -60,7 +75,7 @@
     updateDrumPadStrokes(layer.id, quantized);
 
     try {
-      const wav = renderDrumStrokesToWav(quantized);
+      const wav = renderDrumStrokesToWav(quantized, recordTargetDuration || undefined);
       const wavBytes = new Uint8Array(wav.byteLength);
       wavBytes.set(wav);
       const file = new File([wavBytes.buffer], `${layer.name.replace(/\s+/g, '-').toLowerCase()}-take.wav`, {
