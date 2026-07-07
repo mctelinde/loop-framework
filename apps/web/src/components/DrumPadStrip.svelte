@@ -12,6 +12,8 @@
   } from '../lib/layerStore';
   import { engine } from '../lib/engineStore';
   import { get } from 'svelte/store';
+  import { metronomeEnabled } from '../lib/transportStore';
+  import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
   import { DRUM_PAD_KEYS, triggerDrumPadHit, quantizeStrokes, renderDrumStrokesToWav } from '../lib/drumPadAudio';
   import { calculateRecordingDuration } from '../lib/recordingStore';
 
@@ -45,12 +47,28 @@
     ];
   }
 
-  function startRecord(): void {
+  async function startRecord(): Promise<void> {
     recordError = null;
     rawStrokes = [];
+
+    // Honour count-in exactly as the mic recorder does.
+    if ($countInEnabled) {
+      try {
+        await runCountIn();
+      } catch {
+        return; // cancelled during count-in
+      }
+    }
+
     recording = true;
     recordStartMs = Date.now();
     recordTargetDuration = calculateRecordingDuration();
+
+    // Start click track if metronome is enabled.
+    if ($metronomeEnabled) {
+      get(engine)?.play();
+      get(engine)?.setMetronomeEnabled(true);
+    }
 
     if (recordTargetDuration > 0) {
       autoStopTimer = setTimeout(() => {
@@ -66,6 +84,11 @@
       clearTimeout(autoStopTimer);
       autoStopTimer = undefined;
     }
+
+    // Stop click track.
+    get(engine)?.stop();
+    get(engine)?.setMetronomeEnabled(false);
+
     if (rawStrokes.length === 0) {
       updateDrumPadStrokes(layer.id, []);
       return;
@@ -88,6 +111,16 @@
   }
 
   function clearPattern(): void {
+    cancelCountIn();
+    if (autoStopTimer !== undefined) {
+      clearTimeout(autoStopTimer);
+      autoStopTimer = undefined;
+    }
+    if (recording) {
+      recording = false;
+      get(engine)?.stop();
+      get(engine)?.setMetronomeEnabled(false);
+    }
     rawStrokes = [];
     updateDrumPadStrokes(layer.id, []);
   }
