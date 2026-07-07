@@ -44,7 +44,10 @@ export async function play(): Promise<void> {
 
   // Only start playback if count-in completed or was disabled
   if (get(countInState) !== 'counting') {
-    get(engine)?.play();
+    const eng = get(engine);
+    eng?.play();
+    // Re-sync metronome state to the engine in case something bypassed the store.
+    eng?.setMetronomeEnabled(get(_metronomeEnabled));
     _state.set('playing');
   }
 }
