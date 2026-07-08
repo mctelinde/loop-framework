@@ -4,9 +4,14 @@
   import Transport from './components/Transport.svelte';
   import LayerList from './components/LayerList.svelte';
   import LayerStrip from './components/LayerStrip.svelte';
+  import DrumPadRow from './components/DrumPadRow.svelte';
   import DrumPadStrip from './components/DrumPadStrip.svelte';
+  import TimelineRuler from './components/TimelineRuler.svelte';
   import SessionControls from './components/SessionControls.svelte';
-  import { layers, importing, addLayer, addDrumPadLayer } from './lib/layerStore';
+  import { layers, addLayer, addDrumPadLayer, type DrumPadLayerState } from './lib/layerStore';
+  import { bpm, timeSig } from './lib/transportStore';
+  import { layerPanelFirstRowOffset } from './lib/layoutStore';
+  import { resolveTimelineDuration } from './lib/timelineLayout';
 
   // ── Global drag overlay ────────────────────────────────────────────────────
   // Shows when a user drags files anywhere over the app window.
@@ -29,6 +34,8 @@
 
   let initError = $state<string | null>(null);
   let emptyStateError = $state<string | null>(null);
+  let activeDockLayerId = $state<string | null>(null);
+  let dockVisible = $state(true);
 
   const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
 
@@ -52,6 +59,30 @@
     }
     input.value = '';
   }
+
+  function selectDockLayer(layerId: string): void {
+    activeDockLayerId = layerId;
+  }
+
+  let timelineDuration = $derived(resolveTimelineDuration($layers, $bpm, $timeSig.beatsPerBar));
+  let drumPadLayers = $derived($layers.filter((layer): layer is DrumPadLayerState => layer.type === 'drumPad'));
+  let activeDockLayer = $derived.by(() =>
+    drumPadLayers.find((layer) => layer.id === activeDockLayerId)
+      ?? drumPadLayers[0]
+      ?? null,
+  );
+
+  $effect(() => {
+    if (drumPadLayers.length === 0) {
+      activeDockLayerId = null;
+      dockVisible = true;
+      return;
+    }
+
+    if (activeDockLayerId !== null && !drumPadLayers.some((layer) => layer.id === activeDockLayerId)) {
+      activeDockLayerId = null;
+    }
+  });
 
   onMount(async () => {
     try {
@@ -88,12 +119,58 @@
     <Transport />
     <div class="workspace">
       <LayerList />
-      <div class="mixer-area">
-        {#each $layers as layer (layer.id)}
-          {#if layer.type === 'audio'}
-            <LayerStrip {layer} />
-          {:else}
-            <DrumPadStrip {layer} />
+      <div class="arrangement">
+        {#if $layers.length > 0}
+          <!-- Connector lines: one per layer, spanning the left padding gap
+               so it's visually clear which layer maps to which track row -->
+          <div
+            class="track-connectors"
+            style:top={`${$layerPanelFirstRowOffset}px`}
+            aria-hidden="true"
+          >
+            {#each $layers as _}
+              <div class="connector-line"></div>
+            {/each}
+          </div>
+
+          <div class="timeline-header" style:height={`${Math.max(0, $layerPanelFirstRowOffset)}px`}>
+            <div class="tracks-label">Tracks</div>
+            <TimelineRuler
+              duration={timelineDuration}
+              bpm={$bpm}
+              beatsPerBar={$timeSig.beatsPerBar}
+            />
+          </div>
+
+          <div class="track-lanes">
+            {#each $layers as layer (layer.id)}
+              {#if layer.type === 'audio'}
+                <LayerStrip {layer} timelineDuration={timelineDuration} />
+              {:else}
+                <DrumPadRow
+                  {layer}
+                  timelineDuration={timelineDuration}
+                  selected={activeDockLayer?.id === layer.id}
+                  onSelect={() => selectDockLayer(layer.id)}
+                />
+              {/if}
+            {/each}
+          </div>
+
+          {#if activeDockLayer}
+            <section class="modular-dock" aria-label="Layer controls dock">
+              <div class="dock-header">
+                <div class="dock-title">Drum Pad Controls · {activeDockLayer.name}</div>
+                <button class="dock-close" onclick={() => (dockVisible = !dockVisible)}>
+                  {dockVisible ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {#if dockVisible}
+                <div class="dock-body">
+                  <DrumPadStrip layer={activeDockLayer} />
+                </div>
+              {/if}
+            </section>
           {/if}
         {:else}
           <div class="empty-actions">
@@ -118,7 +195,7 @@
               <p class="empty-error" role="alert">{emptyStateError}</p>
             {/if}
           </div>
-        {/each}
+        {/if}
       </div>
     </div>
   {/if}
@@ -247,13 +324,121 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+    --track-row-height: 82px;
+    --track-meta-width: 292px;
+    --track-lane-radius: 10px;
   }
 
-  .mixer-area {
+  .arrangement {
     flex: 1;
     display: flex;
-    padding: 1rem;
+    flex-direction: column;
+    position: relative;
+    gap: 0;
+    /* No top padding — the timeline-header handles vertical spacing internally
+       so that track rows align exactly with layer rows in the left panel */
+    padding: 0 0.85rem 0.85rem 0.85rem;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* Per-row connector lines that span the left padding gap, visually
+     tying each layer entry on the left to its track row on the right */
+  .track-connectors {
+    position: absolute;
+    left: 0;
+    width: 0.85rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .connector-line {
+    height: var(--track-row-height, 82px);
+    display: flex;
+    align-items: center;
+  }
+
+  .connector-line::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right, transparent 10%, #3a3a3a 100%);
+  }
+
+  .timeline-header {
+    display: grid;
+    grid-template-columns: var(--track-meta-width) minmax(0, 1fr);
+    gap: 0.65rem;
+    align-items: center;
+    /* No padding — the full JS-measured height (= left panel header height)
+       is given to the ruler. Adding padding here would shrink the ruler's
+       available space and cause it to overflow into the track lanes. */
+    box-sizing: border-box;
+  }
+
+  .tracks-label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #77807a;
+    padding-left: 0.3rem;
+  }
+
+  .track-lanes {
+    flex: 1;
+    min-height: 0;
+    border: 1px solid #2a2a2a;
+    border-top: none;
+    border-radius: var(--track-lane-radius);
+    background: #121212;
+    overflow: auto;
+  }
+
+  .modular-dock {
+    margin-top: 0.75rem;
+    border: 1px solid #313131;
+    border-radius: 10px;
+    background: #101010;
+    overflow: hidden;
+  }
+
+  .dock-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #272727;
+    background: #181818;
+  }
+
+  .dock-title {
+    font-size: 0.74rem;
+    color: #bbb;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  .dock-close {
+    border: 1px solid #3a3a3a;
+    border-radius: 5px;
+    background: #242424;
+    color: #b2b2b2;
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+    cursor: pointer;
+  }
+
+  .dock-close:hover {
+    background: #2b2b2b;
+    color: #e0e0e0;
+  }
+
+  .dock-body {
+    display: flex;
     overflow-x: auto;
+    padding: 0.5rem;
   }
 
   .empty-actions {

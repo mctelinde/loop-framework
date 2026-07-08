@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { layers, addLayer, addDrumPadLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
@@ -14,6 +15,7 @@
     type QuantizeMode,
     type QuantizeStrength,
   } from '../lib/recordingStore';
+  import { setLayerPanelFirstRowOffset, setLayerPanelHeaderHeight } from '../lib/layoutStore';
   import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
@@ -41,6 +43,8 @@
   let recordingError = $state<string | null>(null);
   let showMeasureSelector = $state(false);
   let showSettings = $state(false);
+  let listEl = $state<HTMLElement | null>(null);
+  let headerEl = $state<HTMLElement | null>(null);
 
   async function handleAutoStop(wavBlob: Blob) {
     try {
@@ -267,10 +271,33 @@
     reorderFromIndex = null;
     reorderOverIndex = null;
   }
+
+  onMount(() => {
+    if (!listEl || !headerEl) return;
+    const applyAlignment = () => {
+      const listRect = listEl?.getBoundingClientRect();
+      const headerRect = headerEl?.getBoundingClientRect();
+      const firstRow = listEl?.querySelector<HTMLElement>('.layer-row');
+      const firstRowRect = firstRow?.getBoundingClientRect();
+      const headerHeight = headerRect?.height ?? 0;
+      const firstRowOffset = firstRowRect && listRect
+        ? firstRowRect.top - listRect.top
+        : headerHeight;
+      setLayerPanelHeaderHeight(headerHeight);
+      setLayerPanelFirstRowOffset(firstRowOffset);
+    };
+    applyAlignment();
+
+    const ro = new ResizeObserver(() => applyAlignment());
+    ro.observe(listEl);
+    ro.observe(headerEl);
+    return () => ro.disconnect();
+  });
 </script>
 
 <section
   class="layer-list"
+  bind:this={listEl}
   class:panel-drag-over={isPanelDragOver}
   ondrop={onPanelDrop}
   ondragover={onPanelDragOver}
@@ -279,7 +306,7 @@
   aria-label="Audio layers"
 >
   <!-- ── Header ──────────────────────────────────────────────────────── -->
-  <div class="list-header">
+  <div class="list-header" bind:this={headerEl}>
     <svg class="layers-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M12 2L2 7l10 5 10-5-10-5z" />
       <path d="M2 17l10 5 10-5" />
@@ -756,6 +783,7 @@
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 0.6rem;
+    height: var(--track-row-height, 82px);
     border-bottom: 1px solid #1e1e1e;
     cursor: grab;
     transition: background 0.1s;
@@ -833,6 +861,7 @@
     transition: color 0.1s, background 0.1s;
   }
   .remove-btn:hover { color: #f44336; background: #2a1515; }
+
 
   /* ── Error banner ── */
   .error-banner {

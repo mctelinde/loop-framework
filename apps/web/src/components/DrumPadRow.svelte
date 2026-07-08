@@ -1,51 +1,23 @@
 <script lang="ts">
-  import WaveformCanvas from './WaveformCanvas.svelte';
   import Knob from './Knob.svelte';
-  import { setVolume, setPan, setMuted, setSoloed, setLoopRegion, replaceLayerAudio } from '../lib/layerStore';
+  import {
+    setVolume,
+    setPan,
+    setMuted,
+    setSoloed,
+    type DrumPadLayerState,
+  } from '../lib/layerStore';
+  import { DRUM_PAD_KEYS } from '../lib/drumPadAudio';
   import { timeToPercent } from '../lib/timelineLayout';
-  import type { AudioLayerState } from '../lib/layerStore';
 
   interface Props {
-    layer: AudioLayerState;
+    layer: DrumPadLayerState;
     timelineDuration: number;
+    selected: boolean;
+    onSelect: () => void;
   }
 
-  let { layer, timelineDuration }: Props = $props();
-
-  const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
-  let isDropTarget = $state(false);
-  let replaceError = $state<string | null>(null);
-
-  function isAudioDrag(e: DragEvent): boolean {
-    return Array.from(e.dataTransfer?.types ?? []).includes('Files');
-  }
-
-  function onStripDragOver(e: DragEvent) {
-    if (!isAudioDrag(e)) return;
-    e.preventDefault();
-    isDropTarget = true;
-  }
-
-  function onStripDragLeave() { isDropTarget = false; }
-
-  async function onStripDrop(e: DragEvent) {
-    if (!isAudioDrag(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    isDropTarget = false;
-    replaceError = null;
-
-    const file = Array.from(e.dataTransfer?.files ?? []).find(
-      (f) => ACCEPTED_MIME.includes(f.type) || /\.(wav|mp3|ogg)$/i.test(f.name),
-    );
-    if (!file) return;
-
-    try {
-      await replaceLayerAudio(layer.id, file);
-    } catch (err) {
-      replaceError = String(err);
-    }
-  }
+  let { layer, timelineDuration, selected, onSelect }: Props = $props();
 
   function volToDb(v: number): string {
     if (v <= 0) return '-∞';
@@ -53,25 +25,26 @@
     return `${db >= 0 ? '+' : ''}${db.toFixed(1)}`;
   }
 
-  let clipWidth = $derived(Math.max(8, timeToPercent(layer.duration, timelineDuration)));
+  function onRowKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect();
+    }
+  }
 </script>
 
 <div
   class="track-row"
   class:muted={layer.muted}
   class:soloed={layer.soloed}
-  class:drop-target={isDropTarget}
-  role="region"
-  aria-label="Layer: {layer.name}"
-  ondragover={onStripDragOver}
-  ondragleave={onStripDragLeave}
-  ondrop={onStripDrop}
+  class:selected={selected}
+  role="button"
+  tabindex="0"
+  aria-pressed={selected}
+  onpointerdown={onSelect}
+  onkeydown={onRowKeydown}
 >
   <div class="track-controls">
-    {#if replaceError}
-      <div class="replace-error" title={replaceError}>!</div>
-    {/if}
-
     <div class="control-cluster">
       <button
         class="ms-btn mute"
@@ -114,24 +87,21 @@
       />
       <span class="db">{volToDb(layer.volume)} dB</span>
     </label>
-
-    <div class="loop-times">
-      <span>{layer.loopStart.toFixed(2)}s</span>
-      <span>{layer.loopEnd.toFixed(2)}s</span>
-    </div>
   </div>
 
   <div class="timeline-cell">
     <div class="timeline-strip">
-      <div class="timeline-clip" style={`width:${clipWidth}%;`}>
-        <WaveformCanvas
-          peaks={layer.waveformPeaks}
-          duration={layer.duration}
-          loopStart={layer.loopStart}
-          loopEnd={layer.loopEnd}
-          onLoopChange={(s, e) => setLoopRegion(layer.id, s, e)}
-        />
-      </div>
+      {#if layer.strokes.length > 0}
+        {#each layer.strokes as stroke, index (`${stroke.padIndex}-${stroke.time}-${index}`)}
+          <span
+            class="stroke-marker"
+            style={`left:${timeToPercent(stroke.time, timelineDuration)}%;--stroke-color:${DRUM_PAD_KEYS[stroke.padIndex]?.color ?? '#9ca3af'};`}
+            title={`${DRUM_PAD_KEYS[stroke.padIndex]?.label ?? 'Pad'} @ ${stroke.time.toFixed(2)}s`}
+          ></span>
+        {/each}
+      {:else}
+        <div class="empty-pattern">No pattern recorded</div>
+      {/if}
     </div>
   </div>
 </div>
@@ -150,10 +120,21 @@
 
   .track-row.muted { opacity: 0.55; }
   .track-row.soloed { box-shadow: inset 0 0 0 1px #8a6f2a; }
-  .track-row.drop-target {
-    outline: 2px dashed #4caf50;
-    outline-offset: -2px;
-    background: #172017;
+  .track-row.selected { border-bottom-color: transparent; }
+  .track-row.selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid #6f4fa1;
+    pointer-events: none;
+  }
+  .track-row.selected:first-child::after {
+    border-top-left-radius: var(--track-lane-radius, 10px);
+    border-top-right-radius: var(--track-lane-radius, 10px);
+  }
+  .track-row.selected:last-child::after {
+    border-bottom-left-radius: var(--track-lane-radius, 10px);
+    border-bottom-right-radius: var(--track-lane-radius, 10px);
   }
 
   .track-controls {
@@ -161,24 +142,6 @@
     align-items: center;
     gap: 0.55rem;
     min-width: 0;
-    position: relative;
-  }
-
-  .replace-error {
-    position: absolute;
-    top: 0.1rem;
-    right: 0.2rem;
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    background: #f44336;
-    color: #fff;
-    font-size: 0.65rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: help;
   }
 
   .control-cluster {
@@ -208,34 +171,20 @@
     gap: 0.4rem;
     font-size: 0.7rem;
     color: #9aa7a2;
-    min-width: 10rem;
+    min-width: 9rem;
   }
 
   .volume-inline input {
-    width: 6rem;
-    accent-color: #4caf50;
+    width: 5.8rem;
+    accent-color: #8b5cf6;
   }
 
   .db {
-    min-width: 3.6rem;
+    min-width: 3.2rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
     color: #7f7f7f;
-  }
-
-  .loop-times {
-    margin-left: auto;
-    min-width: 5.8rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.3rem;
-    padding: 0.2rem 0.35rem;
-    border-radius: 6px;
-    border: 1px solid #2c2c2c;
-    background: #111;
     font-size: 0.62rem;
-    color: #848484;
-    font-variant-numeric: tabular-nums;
   }
 
   .timeline-cell {
@@ -245,6 +194,7 @@
   }
 
   .timeline-strip {
+    position: relative;
     width: 100%;
     height: 66px;
     border-radius: 7px;
@@ -253,9 +203,22 @@
     overflow: hidden;
   }
 
-  .timeline-clip {
-    max-width: 100%;
-    min-width: 0;
+  .stroke-marker {
+    position: absolute;
+    top: 14%;
+    bottom: 14%;
+    width: 2px;
+    transform: translateX(-1px);
+    background: color-mix(in srgb, var(--stroke-color) 72%, #f8fafc);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--stroke-color) 45%, transparent);
+  }
+
+  .empty-pattern {
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5f5f5f;
+    font-size: 0.72rem;
   }
 </style>
