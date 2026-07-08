@@ -1,80 +1,36 @@
 <script lang="ts">
-  import WaveformCanvas from './WaveformCanvas.svelte';
   import Knob from './Knob.svelte';
-  import { setVolume, setPan, setMuted, setSoloed, setLoopRegion, replaceLayerAudio } from '../lib/layerStore';
+  import {
+    setVolume,
+    setPan,
+    setMuted,
+    setSoloed,
+    type DrumPadLayerState,
+  } from '../lib/layerStore';
+  import { DRUM_PAD_KEYS } from '../lib/drumPadAudio';
   import { timeToPercent } from '../lib/timelineLayout';
-  import type { AudioLayerState } from '../lib/layerStore';
 
   interface Props {
-    layer: AudioLayerState;
+    layer: DrumPadLayerState;
     timelineDuration: number;
+    docked: boolean;
+    onToggleDock: () => void;
   }
 
-  let { layer, timelineDuration }: Props = $props();
-
-  const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
-  let isDropTarget = $state(false);
-  let replaceError = $state<string | null>(null);
-
-  function isAudioDrag(e: DragEvent): boolean {
-    return Array.from(e.dataTransfer?.types ?? []).includes('Files');
-  }
-
-  function onStripDragOver(e: DragEvent) {
-    if (!isAudioDrag(e)) return;
-    e.preventDefault();
-    isDropTarget = true;
-  }
-
-  function onStripDragLeave() { isDropTarget = false; }
-
-  async function onStripDrop(e: DragEvent) {
-    if (!isAudioDrag(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    isDropTarget = false;
-    replaceError = null;
-
-    const file = Array.from(e.dataTransfer?.files ?? []).find(
-      (f) => ACCEPTED_MIME.includes(f.type) || /\.(wav|mp3|ogg)$/i.test(f.name),
-    );
-    if (!file) return;
-
-    try {
-      await replaceLayerAudio(layer.id, file);
-    } catch (err) {
-      replaceError = String(err);
-    }
-  }
+  let { layer, timelineDuration, docked, onToggleDock }: Props = $props();
 
   function volToDb(v: number): string {
     if (v <= 0) return '-∞';
     const db = 20 * Math.log10(v);
     return `${db >= 0 ? '+' : ''}${db.toFixed(1)}`;
   }
-
-  let clipWidth = $derived(Math.max(8, timeToPercent(layer.duration, timelineDuration)));
 </script>
 
-<div
-  class="track-row"
-  class:muted={layer.muted}
-  class:soloed={layer.soloed}
-  class:drop-target={isDropTarget}
-  role="region"
-  aria-label="Layer: {layer.name}"
-  ondragover={onStripDragOver}
-  ondragleave={onStripDragLeave}
-  ondrop={onStripDrop}
->
+<div class="track-row" class:muted={layer.muted} class:soloed={layer.soloed}>
   <div class="track-controls">
-    {#if replaceError}
-      <div class="replace-error" title={replaceError}>!</div>
-    {/if}
-
     <div class="track-head">
       <div class="track-name" title={layer.name}>{layer.name}</div>
-      <span class="type-pill">Audio</span>
+      <span class="type-pill">Drum Pad</span>
     </div>
 
     <div class="control-cluster">
@@ -120,23 +76,24 @@
       <span class="db">{volToDb(layer.volume)} dB</span>
     </label>
 
-    <div class="loop-times">
-      <span>{layer.loopStart.toFixed(2)}s</span>
-      <span>{layer.loopEnd.toFixed(2)}s</span>
-    </div>
+    <button class="dock-btn" class:active={docked} onclick={onToggleDock}>
+      {docked ? 'Hide Pad' : 'Open Pad'}
+    </button>
   </div>
 
   <div class="timeline-cell">
     <div class="timeline-strip">
-      <div class="timeline-clip" style={`width:${clipWidth}%;`}>
-        <WaveformCanvas
-          peaks={layer.waveformPeaks}
-          duration={layer.duration}
-          loopStart={layer.loopStart}
-          loopEnd={layer.loopEnd}
-          onLoopChange={(s, e) => setLoopRegion(layer.id, s, e)}
-        />
-      </div>
+      {#if layer.strokes.length > 0}
+        {#each layer.strokes as stroke, index (`${stroke.padIndex}-${stroke.time}-${index}`)}
+          <span
+            class="stroke-marker"
+            style={`left:${timeToPercent(stroke.time, timelineDuration)}%;--stroke-color:${DRUM_PAD_KEYS[stroke.padIndex]?.color ?? '#9ca3af'};`}
+            title={`${DRUM_PAD_KEYS[stroke.padIndex]?.label ?? 'Pad'} @ ${stroke.time.toFixed(2)}s`}
+          ></span>
+        {/each}
+      {:else}
+        <div class="empty-pattern">No pattern recorded</div>
+      {/if}
     </div>
   </div>
 </div>
@@ -149,40 +106,16 @@
     padding: 0.5rem 0.65rem;
     border-bottom: 1px solid #242424;
     background: #141414;
-    position: relative;
   }
 
   .track-row.muted { opacity: 0.55; }
   .track-row.soloed { box-shadow: inset 0 0 0 1px #8a6f2a; }
-  .track-row.drop-target {
-    outline: 2px dashed #4caf50;
-    outline-offset: -2px;
-    background: #172017;
-  }
 
   .track-controls {
     display: flex;
     align-items: center;
     gap: 0.55rem;
     min-width: 0;
-    position: relative;
-  }
-
-  .replace-error {
-    position: absolute;
-    top: 0.1rem;
-    right: 0.2rem;
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    background: #f44336;
-    color: #fff;
-    font-size: 0.65rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: help;
   }
 
   .track-head {
@@ -205,9 +138,9 @@
   .type-pill {
     flex-shrink: 0;
     font-size: 0.62rem;
-    color: #7eb4de;
-    border: 1px solid #2b4a66;
-    background: #172331;
+    color: #d8b4fe;
+    border: 1px solid #4b3567;
+    background: #21192d;
     border-radius: 999px;
     padding: 0.06rem 0.35rem;
   }
@@ -244,7 +177,7 @@
 
   .volume-inline input {
     width: 6rem;
-    accent-color: #4caf50;
+    accent-color: #8b5cf6;
   }
 
   .db {
@@ -254,19 +187,21 @@
     color: #7f7f7f;
   }
 
-  .loop-times {
+  .dock-btn {
     margin-left: auto;
-    min-width: 5.8rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.3rem;
-    padding: 0.2rem 0.35rem;
-    border-radius: 6px;
-    border: 1px solid #2c2c2c;
-    background: #111;
-    font-size: 0.62rem;
-    color: #848484;
-    font-variant-numeric: tabular-nums;
+    border: 1px solid #3b2f5c;
+    border-radius: 5px;
+    background: #1f1830;
+    color: #d7c6ff;
+    font-size: 0.68rem;
+    padding: 0.3rem 0.55rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .dock-btn.active {
+    background: #352651;
+    color: #f1eaff;
   }
 
   .timeline-cell {
@@ -276,6 +211,7 @@
   }
 
   .timeline-strip {
+    position: relative;
     width: 100%;
     height: 66px;
     border-radius: 7px;
@@ -284,9 +220,22 @@
     overflow: hidden;
   }
 
-  .timeline-clip {
-    max-width: 100%;
-    min-width: 0;
+  .stroke-marker {
+    position: absolute;
+    top: 14%;
+    bottom: 14%;
+    width: 2px;
+    transform: translateX(-1px);
+    background: color-mix(in srgb, var(--stroke-color) 72%, #f8fafc);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--stroke-color) 45%, transparent);
+  }
+
+  .empty-pattern {
     height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5f5f5f;
+    font-size: 0.72rem;
   }
 </style>
