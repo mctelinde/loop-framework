@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import Knob from './Knob.svelte';
   import {
     setVolume,
@@ -46,6 +47,35 @@
       },
     ];
   }
+
+  function isTypingTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    if (target.isContentEditable) return true;
+    return target.closest('input, textarea, select, [contenteditable="true"]') !== null;
+  }
+
+  function padIndexFromKey(event: KeyboardEvent): number | null {
+    if (/^[1-8]$/.test(event.key)) return Number(event.key) - 1;
+    if (/^Digit[1-8]$/.test(event.code)) return Number(event.code.slice(-1)) - 1;
+    if (/^Numpad[1-8]$/.test(event.code)) return Number(event.code.slice(-1)) - 1;
+    return null;
+  }
+
+  function onWindowKeydown(event: KeyboardEvent): void {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (isTypingTarget(event.target)) return;
+
+    const index = padIndexFromKey(event);
+    if (index === null) return;
+
+    event.preventDefault();
+    trigger(index);
+  }
+
+  onMount(() => {
+    window.addEventListener('keydown', onWindowKeydown);
+    return () => window.removeEventListener('keydown', onWindowKeydown);
+  });
 
   async function startRecord(): Promise<void> {
     recordError = null;
@@ -129,6 +159,7 @@
     const angle = (Math.PI * 2 * i) / DRUM_PAD_KEYS.length - Math.PI / 2;
     return {
       ...key,
+      shortcut: String(i + 1),
       x: 50 + Math.cos(angle) * 34,
       y: 50 + Math.sin(angle) * 34,
     };
@@ -173,10 +204,11 @@
         class="pad-key"
         style={`left:${pad.x}%;top:${pad.y}%;--key-color:${pad.color};`}
         onclick={() => trigger(pad.index)}
-        aria-label={`Trigger ${pad.label}`}
-        title={pad.label}
+        aria-label={`Trigger ${pad.label} (key ${pad.shortcut})`}
+        title={`${pad.label} (${pad.shortcut})`}
       >
-        {pad.label}
+        <span>{pad.label}</span>
+        <span class="pad-shortcut">{pad.shortcut}</span>
       </button>
     {/each}
     <div class="pad-center">
@@ -290,11 +322,21 @@
     border: 1px solid color-mix(in srgb, var(--key-color) 55%, #222);
     background: color-mix(in srgb, var(--key-color) 28%, #111);
     color: #f4f4f4;
-    font-size: 0.62rem;
+    font-size: 0.58rem;
     font-weight: 700;
     cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
   }
   .pad-key:hover { filter: brightness(1.15); }
+  .pad-shortcut {
+    font-size: 0.5rem;
+    opacity: 0.9;
+    margin-top: 0.05rem;
+  }
   .pad-center {
     position: absolute;
     left: 50%;
