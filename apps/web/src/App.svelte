@@ -334,10 +334,9 @@
     grid-template-columns: var(--track-meta-width) minmax(0, 1fr);
     gap: 0.65rem;
     align-items: center;
-    /* Padding-top provides visual breathing room from the transport bar.
-       The JS-measured height (= left panel's list-header height) accounts for
-       this via box-sizing: border-box, so total element height stays in sync. */
-    padding-top: 0.85rem;
+    /* No padding — the full JS-measured height (= left panel header height)
+       is given to the ruler. Adding padding here would shrink the ruler's
+       available space and cause it to overflow into the track lanes. */
     box-sizing: border-box;
   }
 
@@ -354,7 +353,9 @@
     min-height: 0;
     border: 1px solid #2a2a2a;
     border-top: none;
-    border-radius: var(--track-lane-radius);
+    /* Only round the bottom corners — top corners stay flat to avoid
+       overlapping the timeline ruler directly above */
+    border-radius: 0 0 var(--track-lane-radius) var(--track-lane-radius);
     background: #121212;
     overflow: auto;
   }

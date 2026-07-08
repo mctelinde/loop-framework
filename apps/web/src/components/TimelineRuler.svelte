@@ -58,7 +58,7 @@
   .timeline-end {
     position: absolute;
     right: 0.45rem;
-    bottom: 0.2rem;
+    top: 0.2rem;
     font-size: 0.6rem;
     color: #5e5e5e;
     font-variant-numeric: tabular-nums;
