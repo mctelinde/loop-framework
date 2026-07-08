@@ -121,6 +121,18 @@
       <LayerList />
       <div class="arrangement">
         {#if $layers.length > 0}
+          <!-- Connector lines: one per layer, spanning the left padding gap
+               so it's visually clear which layer maps to which track row -->
+          <div
+            class="track-connectors"
+            style:top={`${$layerPanelFirstRowOffset}px`}
+            aria-hidden="true"
+          >
+            {#each $layers as _}
+              <div class="connector-line"></div>
+            {/each}
+          </div>
+
           <div class="timeline-header" style:height={`${Math.max(0, $layerPanelFirstRowOffset)}px`}>
             <div class="tracks-label">Tracks</div>
             <TimelineRuler
@@ -321,12 +333,37 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    position: relative;
     gap: 0;
     /* No top padding — the timeline-header handles vertical spacing internally
        so that track rows align exactly with layer rows in the left panel */
     padding: 0 0.85rem 0.85rem 0.85rem;
     min-width: 0;
     overflow: hidden;
+  }
+
+  /* Per-row connector lines that span the left padding gap, visually
+     tying each layer entry on the left to its track row on the right */
+  .track-connectors {
+    position: absolute;
+    left: 0;
+    width: 0.85rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .connector-line {
+    height: var(--track-row-height, 82px);
+    display: flex;
+    align-items: center;
+  }
+
+  .connector-line::after {
+    content: '';
+    display: block;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(to right, transparent 10%, #3a3a3a 100%);
   }
 
   .timeline-header {
