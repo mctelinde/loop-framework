@@ -45,11 +45,6 @@
   onkeydown={onRowKeydown}
 >
   <div class="track-controls">
-    <div class="track-head">
-      <div class="track-name" title={layer.name}>{layer.name}</div>
-      <span class="type-pill">Drum Pad</span>
-    </div>
-
     <div class="control-cluster">
       <button
         class="ms-btn mute"
@@ -117,46 +112,35 @@
     grid-template-columns: var(--track-meta-width, 360px) minmax(0, 1fr);
     gap: 0.65rem;
     padding: 0.5rem 0.65rem;
+    min-height: var(--track-row-height, 82px);
     border-bottom: 1px solid #242424;
     background: #141414;
+    position: relative;
   }
 
   .track-row.muted { opacity: 0.55; }
   .track-row.soloed { box-shadow: inset 0 0 0 1px #8a6f2a; }
-  .track-row.selected { box-shadow: inset 0 0 0 1px #6f4fa1; }
+  .track-row.selected::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 1px solid #6f4fa1;
+    pointer-events: none;
+  }
+  .track-row.selected:first-child::after {
+    border-top-left-radius: var(--track-lane-radius, 10px);
+    border-top-right-radius: var(--track-lane-radius, 10px);
+  }
+  .track-row.selected:last-child::after {
+    border-bottom-left-radius: var(--track-lane-radius, 10px);
+    border-bottom-right-radius: var(--track-lane-radius, 10px);
+  }
 
   .track-controls {
     display: flex;
     align-items: center;
     gap: 0.55rem;
     min-width: 0;
-  }
-
-  .track-head {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    min-width: 6.5rem;
-    max-width: 7.5rem;
-  }
-
-  .track-name {
-    color: #d0d0d0;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .type-pill {
-    flex-shrink: 0;
-    font-size: 0.62rem;
-    color: #d8b4fe;
-    border: 1px solid #4b3567;
-    background: #21192d;
-    border-radius: 999px;
-    padding: 0.06rem 0.35rem;
   }
 
   .control-cluster {

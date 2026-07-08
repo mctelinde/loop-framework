@@ -72,11 +72,6 @@
       <div class="replace-error" title={replaceError}>!</div>
     {/if}
 
-    <div class="track-head">
-      <div class="track-name" title={layer.name}>{layer.name}</div>
-      <span class="type-pill">Audio</span>
-    </div>
-
     <div class="control-cluster">
       <button
         class="ms-btn mute"
@@ -147,6 +142,7 @@
     grid-template-columns: var(--track-meta-width, 360px) minmax(0, 1fr);
     gap: 0.65rem;
     padding: 0.5rem 0.65rem;
+    min-height: var(--track-row-height, 82px);
     border-bottom: 1px solid #242424;
     background: #141414;
     position: relative;
@@ -183,33 +179,6 @@
     align-items: center;
     justify-content: center;
     cursor: help;
-  }
-
-  .track-head {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    min-width: 8rem;
-    max-width: 9.5rem;
-  }
-
-  .track-name {
-    color: #d0d0d0;
-    font-size: 0.78rem;
-    font-weight: 600;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .type-pill {
-    flex-shrink: 0;
-    font-size: 0.62rem;
-    color: #7eb4de;
-    border: 1px solid #2b4a66;
-    background: #172331;
-    border-radius: 999px;
-    padding: 0.06rem 0.35rem;
   }
 
   .control-cluster {

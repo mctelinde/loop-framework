@@ -398,6 +398,8 @@
 
   <!-- ── Layer rows ───────────────────────────────────────────────────── -->
   {#if $layers.length > 0}
+    <div class="track-align-spacer" aria-hidden="true"></div>
+
     {#each $layers as layer, index (layer.id)}
       <!-- Per-row file drop indicator (insert before this row) -->
       {#if rowDragOverIndex === index}
@@ -756,6 +758,7 @@
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 0.6rem;
+    min-height: var(--track-row-height, 82px);
     border-bottom: 1px solid #1e1e1e;
     cursor: grab;
     transition: background 0.1s;
@@ -833,6 +836,12 @@
     transition: color 0.1s, background 0.1s;
   }
   .remove-btn:hover { color: #f44336; background: #2a1515; }
+
+  .track-align-spacer {
+    height: calc(var(--timeline-ruler-height, 2rem) + var(--arrangement-section-gap, 0.75rem));
+    border-bottom: 1px solid #1e1e1e;
+    background: linear-gradient(180deg, #141414 0%, #131313 100%);
+  }
 
   /* ── Error banner ── */
   .error-banner {

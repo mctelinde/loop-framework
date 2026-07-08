@@ -311,17 +311,21 @@
     flex: 1;
     display: flex;
     overflow: hidden;
+    --track-row-height: 82px;
+    --track-meta-width: 292px;
+    --timeline-ruler-height: 2rem;
+    --arrangement-section-gap: 0.75rem;
+    --track-lane-radius: 10px;
   }
 
   .arrangement {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--arrangement-section-gap);
     padding: 0.85rem;
     min-width: 0;
     overflow: hidden;
-    --track-meta-width: 360px;
   }
 
   .timeline-header {
@@ -343,7 +347,7 @@
     flex: 1;
     min-height: 0;
     border: 1px solid #2a2a2a;
-    border-radius: 10px;
+    border-radius: var(--track-lane-radius);
     background: #121212;
     overflow: auto;
   }
