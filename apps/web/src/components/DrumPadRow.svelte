@@ -13,20 +13,37 @@
   interface Props {
     layer: DrumPadLayerState;
     timelineDuration: number;
-    docked: boolean;
-    onToggleDock: () => void;
+    selected: boolean;
+    onSelect: () => void;
   }
 
-  let { layer, timelineDuration, docked, onToggleDock }: Props = $props();
+  let { layer, timelineDuration, selected, onSelect }: Props = $props();
 
   function volToDb(v: number): string {
     if (v <= 0) return '-∞';
     const db = 20 * Math.log10(v);
     return `${db >= 0 ? '+' : ''}${db.toFixed(1)}`;
   }
+
+  function onRowKeydown(e: KeyboardEvent): void {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelect();
+    }
+  }
 </script>
 
-<div class="track-row" class:muted={layer.muted} class:soloed={layer.soloed}>
+<div
+  class="track-row"
+  class:muted={layer.muted}
+  class:soloed={layer.soloed}
+  class:selected={selected}
+  role="button"
+  tabindex="0"
+  aria-pressed={selected}
+  onpointerdown={onSelect}
+  onkeydown={onRowKeydown}
+>
   <div class="track-controls">
     <div class="track-head">
       <div class="track-name" title={layer.name}>{layer.name}</div>
@@ -61,10 +78,6 @@
         onChange={(v) => setPan(layer.id, v)}
       />
     </div>
-
-    <button class="dock-btn" class:active={docked} onclick={onToggleDock} title="Show drum pad controls">
-      {docked ? 'Pad Open' : 'Open Pad'}
-    </button>
 
     <label class="volume-inline">
       <span>Vol</span>
@@ -110,6 +123,7 @@
 
   .track-row.muted { opacity: 0.55; }
   .track-row.soloed { box-shadow: inset 0 0 0 1px #8a6f2a; }
+  .track-row.selected { box-shadow: inset 0 0 0 1px #6f4fa1; }
 
   .track-controls {
     display: flex;
@@ -172,36 +186,20 @@
     gap: 0.4rem;
     font-size: 0.7rem;
     color: #9aa7a2;
-    min-width: 7rem;
+    min-width: 9rem;
   }
 
   .volume-inline input {
-    width: 4.2rem;
+    width: 5.8rem;
     accent-color: #8b5cf6;
   }
 
   .db {
-    min-width: 2.2rem;
+    min-width: 3.2rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
     color: #7f7f7f;
     font-size: 0.62rem;
-  }
-
-  .dock-btn {
-    border: 1px solid #3b2f5c;
-    border-radius: 5px;
-    background: #1f1830;
-    color: #d7c6ff;
-    font-size: 0.68rem;
-    padding: 0.3rem 0.55rem;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  .dock-btn.active {
-    background: #352651;
-    color: #f1eaff;
   }
 
   .timeline-cell {
