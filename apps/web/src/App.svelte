@@ -34,6 +34,7 @@
   let initError = $state<string | null>(null);
   let emptyStateError = $state<string | null>(null);
   let activeDockLayerId = $state<string | null>(null);
+  let dockVisible = $state(true);
 
   const ACCEPTED_MIME = ['audio/wav', 'audio/mpeg', 'audio/ogg', 'audio/mp3', 'audio/x-wav'];
 
@@ -59,19 +60,28 @@
   }
 
   function toggleDock(layerId: string): void {
-    activeDockLayerId = activeDockLayerId === layerId ? null : layerId;
+    activeDockLayerId = layerId;
+    dockVisible = true;
   }
 
   let timelineDuration = $derived(resolveTimelineDuration($layers, $bpm, $timeSig.beatsPerBar));
+  let drumPadLayers = $derived($layers.filter((layer): layer is DrumPadLayerState => layer.type === 'drumPad'));
   let activeDockLayer = $derived.by(() =>
-    $layers.find(
-      (layer): layer is DrumPadLayerState =>
-        layer.id === activeDockLayerId && layer.type === 'drumPad',
-    ) ?? null,
+    !dockVisible
+      ? null
+      : drumPadLayers.find((layer) => layer.id === activeDockLayerId)
+        ?? drumPadLayers[0]
+        ?? null,
   );
 
   $effect(() => {
-    if (activeDockLayerId !== null && activeDockLayer === null) {
+    if (drumPadLayers.length === 0) {
+      activeDockLayerId = null;
+      dockVisible = true;
+      return;
+    }
+
+    if (activeDockLayerId !== null && !drumPadLayers.some((layer) => layer.id === activeDockLayerId)) {
       activeDockLayerId = null;
     }
   });
@@ -130,7 +140,7 @@
                 <DrumPadRow
                   {layer}
                   timelineDuration={timelineDuration}
-                  docked={activeDockLayerId === layer.id}
+                  docked={activeDockLayer?.id === layer.id}
                   onToggleDock={() => toggleDock(layer.id)}
                 />
               {/if}
@@ -141,7 +151,7 @@
             <section class="modular-dock" aria-label="Layer controls dock">
               <div class="dock-header">
                 <div class="dock-title">Drum Pad Controls · {activeDockLayer.name}</div>
-                <button class="dock-close" onclick={() => (activeDockLayerId = null)}>Close</button>
+                <button class="dock-close" onclick={() => (dockVisible = false)}>Hide</button>
               </div>
               <div class="dock-body">
                 <DrumPadStrip layer={activeDockLayer} />

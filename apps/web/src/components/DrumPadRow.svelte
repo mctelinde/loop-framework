@@ -62,6 +62,10 @@
       />
     </div>
 
+    <button class="dock-btn" class:active={docked} onclick={onToggleDock} title="Show drum pad controls">
+      {docked ? 'Pad Open' : 'Open Pad'}
+    </button>
+
     <label class="volume-inline">
       <span>Vol</span>
       <input
@@ -75,10 +79,6 @@
       />
       <span class="db">{volToDb(layer.volume)} dB</span>
     </label>
-
-    <button class="dock-btn" class:active={docked} onclick={onToggleDock}>
-      {docked ? 'Hide Pad' : 'Open Pad'}
-    </button>
   </div>
 
   <div class="timeline-cell">
@@ -122,8 +122,8 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    min-width: 8rem;
-    max-width: 9.5rem;
+    min-width: 6.5rem;
+    max-width: 7.5rem;
   }
 
   .track-name {
@@ -172,23 +172,23 @@
     gap: 0.4rem;
     font-size: 0.7rem;
     color: #9aa7a2;
-    min-width: 10rem;
+    min-width: 7rem;
   }
 
   .volume-inline input {
-    width: 6rem;
+    width: 4.2rem;
     accent-color: #8b5cf6;
   }
 
   .db {
-    min-width: 3.6rem;
+    min-width: 2.2rem;
     text-align: right;
     font-variant-numeric: tabular-nums;
     color: #7f7f7f;
+    font-size: 0.62rem;
   }
 
   .dock-btn {
-    margin-left: auto;
     border: 1px solid #3b2f5c;
     border-radius: 5px;
     background: #1f1830;
