@@ -112,7 +112,7 @@
     grid-template-columns: var(--track-meta-width, 360px) minmax(0, 1fr);
     gap: 0.65rem;
     padding: 0.5rem 0.65rem;
-    min-height: var(--track-row-height, 82px);
+    height: var(--track-row-height, 82px);
     border-bottom: 1px solid #242424;
     background: #141414;
     position: relative;

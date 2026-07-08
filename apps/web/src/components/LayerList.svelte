@@ -275,10 +275,16 @@
   onMount(() => {
     if (!listEl || !headerEl) return;
     const applyAlignment = () => {
-      const headerHeight = headerEl?.offsetHeight ?? 0;
+      const listRect = listEl?.getBoundingClientRect();
+      const headerRect = headerEl?.getBoundingClientRect();
       const firstRow = listEl?.querySelector<HTMLElement>('.layer-row');
+      const firstRowRect = firstRow?.getBoundingClientRect();
+      const headerHeight = headerRect?.height ?? 0;
+      const firstRowOffset = firstRowRect && listRect
+        ? firstRowRect.top - listRect.top
+        : headerHeight;
       setLayerPanelHeaderHeight(headerHeight);
-      setLayerPanelFirstRowOffset(firstRow?.offsetTop ?? headerHeight);
+      setLayerPanelFirstRowOffset(firstRowOffset);
     };
     applyAlignment();
 
@@ -777,7 +783,7 @@
     align-items: center;
     gap: 0.4rem;
     padding: 0.45rem 0.6rem;
-    min-height: var(--track-row-height, 82px);
+    height: var(--track-row-height, 82px);
     border-bottom: 1px solid #1e1e1e;
     cursor: grab;
     transition: background 0.1s;
