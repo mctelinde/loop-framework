@@ -15,14 +15,15 @@
   import { get } from 'svelte/store';
   import { metronomeEnabled } from '../lib/transportStore';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
-  import { DRUM_PAD_KEYS, triggerDrumPadHit, quantizeStrokes, renderDrumStrokesToWav } from '../lib/drumPadAudio';
-  import { calculateRecordingDuration } from '../lib/recordingStore';
+  import { DRUM_PAD_KEYS, triggerDrumPadHit, quantizeStrokes, renderDrumStrokesToWav, preWarmDrumAudioCache } from '../lib/drumPadAudio';
+  import { calculateRecordingDuration, recordingConfig, setLatencyOffsetMs } from '../lib/recordingStore';
 
   interface Props { layer: DrumPadLayerState; }
   let { layer }: Props = $props();
 
   let recording = $state(false);
-  let recordStartMs = $state(0);
+  /** AudioContext.currentTime captured at record start — used for stable, jitter-free stroke timing. */
+  let recordStartAudioTime = $state(0);
   let rawStrokes = $state<DrumStroke[]>([]);
   let recordError = $state<string | null>(null);
   // Target duration is snapped to measure count at record-start time.
@@ -38,11 +39,12 @@
     if (!ctx) return;
     triggerDrumPadHit(ctx, index, 1);
     if (!recording) return;
+    const latencyOffsetSec = $recordingConfig.latencyOffsetMs / 1000;
     rawStrokes = [
       ...rawStrokes,
       {
         padIndex: index,
-        time: Math.max(0, (Date.now() - recordStartMs) / 1000),
+        time: Math.max(0, ctx.currentTime - recordStartAudioTime - latencyOffsetSec),
         velocity: 1,
       },
     ];
@@ -91,8 +93,12 @@
     }
 
     recording = true;
-    recordStartMs = Date.now();
+    recordStartAudioTime = currentCtx()?.currentTime ?? 0;
     recordTargetDuration = calculateRecordingDuration();
+
+    // Pre-warm noise buffer so the first hit has no allocation overhead.
+    const ctx = currentCtx();
+    if (ctx) preWarmDrumAudioCache(ctx);
 
     // Start click track if metronome is enabled.
     if ($metronomeEnabled) {
@@ -223,6 +229,21 @@
       <button class="record-btn" onclick={startRecord}>Record Strokes</button>
     {/if}
     <button class="clear-btn" onclick={clearPattern} disabled={recording}>Clear</button>
+  </div>
+
+  <div class="latency-row" title="Shift recorded strokes earlier to compensate for audio output latency">
+    <label class="latency-label" for="latency-{layer.id}">Offset</label>
+    <input
+      id="latency-{layer.id}"
+      class="latency-input"
+      type="number"
+      min="-200"
+      max="200"
+      step="1"
+      value={$recordingConfig.latencyOffsetMs}
+      oninput={(e) => setLatencyOffsetMs(Number((e.currentTarget as HTMLInputElement).value))}
+    />
+    <span class="latency-unit">ms</span>
   </div>
 
   {#if recordError}
@@ -379,6 +400,31 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .latency-row {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.6rem 0.4rem;
+  }
+  .latency-label {
+    font-size: 0.62rem;
+    color: #888;
+    flex-shrink: 0;
+  }
+  .latency-input {
+    width: 52px;
+    padding: 0.1rem 0.25rem;
+    font-size: 0.64rem;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 3px;
+    color: #ccc;
+    text-align: right;
+  }
+  .latency-unit {
+    font-size: 0.62rem;
+    color: #666;
   }
   .ms-row {
     display: flex;

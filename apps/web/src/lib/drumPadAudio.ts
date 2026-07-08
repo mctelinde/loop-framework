@@ -37,6 +37,27 @@ function createNoiseBuffer(ctx: AudioContext, durationSeconds: number): AudioBuf
   return buffer;
 }
 
+/** One reusable white-noise buffer per AudioContext (white noise is stationary). */
+const _noiseBufferCache = new WeakMap<AudioContext, AudioBuffer>();
+
+function getOrCreateNoiseBuffer(ctx: AudioContext): AudioBuffer {
+  let buf = _noiseBufferCache.get(ctx);
+  if (!buf) {
+    buf = createNoiseBuffer(ctx, 0.4);
+    _noiseBufferCache.set(ctx, buf);
+  }
+  return buf;
+}
+
+/**
+ * Pre-warm the noise buffer cache for a given AudioContext.
+ * Call this just before starting a recording session to ensure the first
+ * hit avoids the one-time allocation cost.
+ */
+export function preWarmDrumAudioCache(ctx: AudioContext): void {
+  getOrCreateNoiseBuffer(ctx);
+}
+
 export function triggerDrumPadHit(
   ctx: AudioContext,
   keyIndex: number,
@@ -50,7 +71,7 @@ export function triggerDrumPadHit(
 
   const noise = () => {
     const src = ctx.createBufferSource();
-    src.buffer = createNoiseBuffer(ctx, 0.2);
+    src.buffer = getOrCreateNoiseBuffer(ctx);
     return src;
   };
 
