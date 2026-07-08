@@ -121,7 +121,7 @@
       <LayerList />
       <div class="arrangement">
         {#if $layers.length > 0}
-          <div class="timeline-header" style:height={`${Math.max(0, $layerPanelFirstRowOffset - 1)}px`}>
+          <div class="timeline-header" style:height={`${Math.max(0, $layerPanelFirstRowOffset)}px`}>
             <div class="tracks-label">Tracks</div>
             <TimelineRuler
               duration={timelineDuration}
@@ -333,7 +333,6 @@
     gap: 0.65rem;
     align-items: center;
     min-height: 2rem;
-    border-bottom: 1px solid #2a2a2a;
   }
 
   .tracks-label {
