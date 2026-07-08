@@ -322,7 +322,9 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding: 0.85rem;
+    /* No top padding — the timeline-header handles vertical spacing internally
+       so that track rows align exactly with layer rows in the left panel */
+    padding: 0 0.85rem 0.85rem 0.85rem;
     min-width: 0;
     overflow: hidden;
   }
@@ -332,7 +334,11 @@
     grid-template-columns: var(--track-meta-width) minmax(0, 1fr);
     gap: 0.65rem;
     align-items: center;
-    min-height: 2rem;
+    /* Padding-top provides visual breathing room from the transport bar.
+       The JS-measured height (= left panel's list-header height) accounts for
+       this via box-sizing: border-box, so total element height stays in sync. */
+    padding-top: 0.85rem;
+    box-sizing: border-box;
   }
 
   .tracks-label {
