@@ -333,7 +333,7 @@
     gap: 0.65rem;
     align-items: center;
     min-height: 2rem;
-    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #2a2a2a;
   }
 
   .tracks-label {
