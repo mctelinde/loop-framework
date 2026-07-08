@@ -10,6 +10,7 @@
   import SessionControls from './components/SessionControls.svelte';
   import { layers, addLayer, addDrumPadLayer, type DrumPadLayerState } from './lib/layerStore';
   import { bpm, timeSig } from './lib/transportStore';
+  import { layerPanelHeaderHeight } from './lib/layoutStore';
   import { resolveTimelineDuration } from './lib/timelineLayout';
 
   // ── Global drag overlay ────────────────────────────────────────────────────
@@ -120,7 +121,7 @@
       <LayerList />
       <div class="arrangement">
         {#if $layers.length > 0}
-          <div class="timeline-header">
+          <div class="timeline-header" style:height={`${$layerPanelHeaderHeight}px`}>
             <div class="tracks-label">Tracks</div>
             <TimelineRuler
               duration={timelineDuration}
@@ -313,8 +314,6 @@
     overflow: hidden;
     --track-row-height: 82px;
     --track-meta-width: 292px;
-    --timeline-ruler-height: 2rem;
-    --arrangement-section-gap: 0.75rem;
     --track-lane-radius: 10px;
   }
 
@@ -322,7 +321,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--arrangement-section-gap);
+    gap: 0;
     padding: 0.85rem;
     min-width: 0;
     overflow: hidden;
@@ -333,6 +332,8 @@
     grid-template-columns: var(--track-meta-width) minmax(0, 1fr);
     gap: 0.65rem;
     align-items: center;
+    min-height: 2rem;
+    margin-bottom: 0.75rem;
   }
 
   .tracks-label {

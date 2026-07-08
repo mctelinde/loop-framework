@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { layers, addLayer, addDrumPadLayer, insertLayerAt, removeLayer, renameLayer, reorderLayers, importing } from '../lib/layerStore';
   import { MicRecorder, type RecordingState } from '../lib/micRecorder';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
@@ -14,6 +15,7 @@
     type QuantizeMode,
     type QuantizeStrength,
   } from '../lib/recordingStore';
+  import { setLayerPanelHeaderHeight } from '../lib/layoutStore';
   import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
@@ -41,6 +43,7 @@
   let recordingError = $state<string | null>(null);
   let showMeasureSelector = $state(false);
   let showSettings = $state(false);
+  let headerEl = $state<HTMLElement | null>(null);
 
   async function handleAutoStop(wavBlob: Blob) {
     try {
@@ -267,6 +270,16 @@
     reorderFromIndex = null;
     reorderOverIndex = null;
   }
+
+  onMount(() => {
+    if (!headerEl) return;
+    const applyHeight = () => setLayerPanelHeaderHeight(headerEl?.offsetHeight ?? 0);
+    applyHeight();
+
+    const ro = new ResizeObserver(() => applyHeight());
+    ro.observe(headerEl);
+    return () => ro.disconnect();
+  });
 </script>
 
 <section
@@ -279,7 +292,7 @@
   aria-label="Audio layers"
 >
   <!-- ── Header ──────────────────────────────────────────────────────── -->
-  <div class="list-header">
+  <div class="list-header" bind:this={headerEl}>
     <svg class="layers-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M12 2L2 7l10 5 10-5-10-5z" />
       <path d="M2 17l10 5 10-5" />
@@ -473,7 +486,6 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.6rem 0.75rem 0.5rem;
-    min-height: calc(var(--timeline-ruler-height, 2rem) + var(--arrangement-section-gap, 0.75rem));
     border-bottom: 1px solid #2a2a2a;
     min-width: 0;
   }
