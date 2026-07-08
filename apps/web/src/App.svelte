@@ -10,7 +10,7 @@
   import SessionControls from './components/SessionControls.svelte';
   import { layers, addLayer, addDrumPadLayer, type DrumPadLayerState } from './lib/layerStore';
   import { bpm, timeSig } from './lib/transportStore';
-  import { layerPanelHeaderHeight } from './lib/layoutStore';
+  import { layerPanelFirstRowOffset } from './lib/layoutStore';
   import { resolveTimelineDuration } from './lib/timelineLayout';
 
   // ── Global drag overlay ────────────────────────────────────────────────────
@@ -121,7 +121,7 @@
       <LayerList />
       <div class="arrangement">
         {#if $layers.length > 0}
-          <div class="timeline-header" style:height={`${$layerPanelHeaderHeight}px`}>
+          <div class="timeline-header" style:height={`${Math.max(0, $layerPanelFirstRowOffset - 1)}px`}>
             <div class="tracks-label">Tracks</div>
             <TimelineRuler
               duration={timelineDuration}

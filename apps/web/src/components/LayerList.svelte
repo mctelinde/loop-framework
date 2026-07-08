@@ -15,7 +15,7 @@
     type QuantizeMode,
     type QuantizeStrength,
   } from '../lib/recordingStore';
-  import { setLayerPanelHeaderHeight } from '../lib/layoutStore';
+  import { setLayerPanelFirstRowOffset, setLayerPanelHeaderHeight } from '../lib/layoutStore';
   import { get } from 'svelte/store';
 
   // ── File validation ────────────────────────────────────────────────────────
@@ -43,6 +43,7 @@
   let recordingError = $state<string | null>(null);
   let showMeasureSelector = $state(false);
   let showSettings = $state(false);
+  let listEl = $state<HTMLElement | null>(null);
   let headerEl = $state<HTMLElement | null>(null);
 
   async function handleAutoStop(wavBlob: Blob) {
@@ -272,11 +273,17 @@
   }
 
   onMount(() => {
-    if (!headerEl) return;
-    const applyHeight = () => setLayerPanelHeaderHeight(headerEl?.offsetHeight ?? 0);
-    applyHeight();
+    if (!listEl || !headerEl) return;
+    const applyAlignment = () => {
+      const headerHeight = headerEl?.offsetHeight ?? 0;
+      const firstRow = listEl?.querySelector<HTMLElement>('.layer-row');
+      setLayerPanelHeaderHeight(headerHeight);
+      setLayerPanelFirstRowOffset(firstRow?.offsetTop ?? headerHeight);
+    };
+    applyAlignment();
 
-    const ro = new ResizeObserver(() => applyHeight());
+    const ro = new ResizeObserver(() => applyAlignment());
+    ro.observe(listEl);
     ro.observe(headerEl);
     return () => ro.disconnect();
   });
@@ -284,6 +291,7 @@
 
 <section
   class="layer-list"
+  bind:this={listEl}
   class:panel-drag-over={isPanelDragOver}
   ondrop={onPanelDrop}
   ondragover={onPanelDragOver}

@@ -120,6 +120,7 @@
 
   .track-row.muted { opacity: 0.55; }
   .track-row.soloed { box-shadow: inset 0 0 0 1px #8a6f2a; }
+  .track-row.selected { border-bottom-color: transparent; }
   .track-row.selected::after {
     content: '';
     position: absolute;
