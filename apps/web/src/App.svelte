@@ -348,12 +348,14 @@
     flex: 1;
     min-height: 0;
     border: 1px solid #2a2a2a;
+    border-top: none;
     border-radius: var(--track-lane-radius);
     background: #121212;
     overflow: auto;
   }
 
   .modular-dock {
+    margin-top: 0.75rem;
     border: 1px solid #313131;
     border-radius: 10px;
     background: #101010;
