@@ -12,6 +12,7 @@
     calculateRecordingDuration,
     setQuantizeMode,
     setQuantizeStrength,
+    setLatencyOffsetMs,
     type QuantizeMode,
     type QuantizeStrength,
   } from '../lib/recordingStore';
@@ -386,6 +387,22 @@
                   {/each}
                 </select>
               </label>
+              <label class="settings-label" title="Shift recorded strokes earlier to compensate for audio output latency (positive = earlier)">
+                Offset
+                <div class="latency-field">
+                  <input
+                    class="settings-latency-input"
+                    type="number"
+                    min="-200"
+                    max="200"
+                    step="1"
+                    value={$recordingConfig.latencyOffsetMs}
+                    oninput={(e) => setLatencyOffsetMs(Number((e.currentTarget as HTMLInputElement).value))}
+                    aria-label="Latency offset in milliseconds"
+                  />
+                  <span class="latency-unit">ms</span>
+                </div>
+              </label>
             </div>
           {/if}
         </div>
@@ -618,6 +635,28 @@
     color: #d4e3ff;
     font-size: 0.68rem;
     padding: 0.2rem 0.35rem;
+  }
+
+  .latency-field {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .settings-latency-input {
+    width: 52px;
+    background: #111;
+    border: 1px solid #2b3344;
+    border-radius: 4px;
+    color: #d4e3ff;
+    font-size: 0.68rem;
+    padding: 0.2rem 0.35rem;
+    text-align: right;
+  }
+
+  .latency-unit {
+    font-size: 0.65rem;
+    color: #6b7a96;
   }
 
   .measure-option {

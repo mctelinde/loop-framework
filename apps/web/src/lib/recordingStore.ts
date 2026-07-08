@@ -18,6 +18,8 @@ export interface RecordingConfig {
   timeBased: number; // fallback duration in seconds
   quantizeMode: QuantizeMode;
   quantizeStrength: QuantizeStrength;
+  /** Input latency compensation in milliseconds (positive = shift strokes earlier). */
+  latencyOffsetMs: number;
 }
 
 // Default 8 measures recording
@@ -25,6 +27,7 @@ const DEFAULT_MEASURE_COUNT = 8;
 const STORAGE_KEY = 'lf-recording-measure-count';
 const QUANTIZE_MODE_KEY = 'lf-quantize-mode';
 const QUANTIZE_STRENGTH_KEY = 'lf-quantize-strength';
+const LATENCY_OFFSET_KEY = 'lf-latency-offset-ms';
 
 const _config = writable<RecordingConfig>({
   mode: 'measures',
@@ -32,6 +35,7 @@ const _config = writable<RecordingConfig>({
   timeBased: 30,
   quantizeMode: loadSavedQuantizeMode(),
   quantizeStrength: loadSavedQuantizeStrength(),
+  latencyOffsetMs: loadSavedLatencyOffsetMs(),
 });
 
 export const recordingConfig: Readable<RecordingConfig> = derived(_config, ($c) => $c);
@@ -83,6 +87,13 @@ function saveQuantizeStrength(strength: QuantizeStrength): void {
   }
 }
 
+function loadSavedLatencyOffsetMs(): number {
+  if (typeof window === 'undefined') return 0;
+  const saved = localStorage.getItem(LATENCY_OFFSET_KEY);
+  const parsed = saved !== null ? parseFloat(saved) : NaN;
+  return isFinite(parsed) ? Math.max(-200, Math.min(200, parsed)) : 0;
+}
+
 /**
  * Set number of measures for recording
  */
@@ -107,6 +118,14 @@ export function setQuantizeMode(mode: QuantizeMode): void {
 export function setQuantizeStrength(strength: QuantizeStrength): void {
   _config.update((c) => ({ ...c, quantizeStrength: strength }));
   saveQuantizeStrength(strength);
+}
+
+export function setLatencyOffsetMs(ms: number): void {
+  const clamped = Math.max(-200, Math.min(200, Math.round(ms)));
+  _config.update((c) => ({ ...c, latencyOffsetMs: clamped }));
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(LATENCY_OFFSET_KEY, String(clamped));
+  }
 }
 
 function quantizeStrengthValue(strength: QuantizeStrength): number {

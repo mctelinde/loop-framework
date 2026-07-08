@@ -15,14 +15,15 @@
   import { get } from 'svelte/store';
   import { metronomeEnabled } from '../lib/transportStore';
   import { countInEnabled, runCountIn, cancelCountIn } from '../lib/countInStore';
-  import { DRUM_PAD_KEYS, triggerDrumPadHit, quantizeStrokes, renderDrumStrokesToWav } from '../lib/drumPadAudio';
-  import { calculateRecordingDuration } from '../lib/recordingStore';
+  import { DRUM_PAD_KEYS, triggerDrumPadHit, quantizeStrokes, renderDrumStrokesToWav, preWarmDrumAudioCache } from '../lib/drumPadAudio';
+  import { calculateRecordingDuration, recordingConfig } from '../lib/recordingStore';
 
   interface Props { layer: DrumPadLayerState; }
   let { layer }: Props = $props();
 
   let recording = $state(false);
-  let recordStartMs = $state(0);
+  /** AudioContext.currentTime captured at record start — used for stable, jitter-free stroke timing. */
+  let recordStartAudioTime = $state(0);
   let rawStrokes = $state<DrumStroke[]>([]);
   let recordError = $state<string | null>(null);
   // Target duration is snapped to measure count at record-start time.
@@ -38,11 +39,12 @@
     if (!ctx) return;
     triggerDrumPadHit(ctx, index, 1);
     if (!recording) return;
+    const latencyOffsetSec = $recordingConfig.latencyOffsetMs / 1000;
     rawStrokes = [
       ...rawStrokes,
       {
         padIndex: index,
-        time: Math.max(0, (Date.now() - recordStartMs) / 1000),
+        time: Math.max(0, ctx.currentTime - recordStartAudioTime - latencyOffsetSec),
         velocity: 1,
       },
     ];
@@ -91,8 +93,12 @@
     }
 
     recording = true;
-    recordStartMs = Date.now();
+    recordStartAudioTime = currentCtx()?.currentTime ?? 0;
     recordTargetDuration = calculateRecordingDuration();
+
+    // Pre-warm noise buffer so the first hit has no allocation overhead.
+    const ctx = currentCtx();
+    if (ctx) preWarmDrumAudioCache(ctx);
 
     // Start click track if metronome is enabled.
     if ($metronomeEnabled) {
