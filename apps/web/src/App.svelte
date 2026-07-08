@@ -353,9 +353,7 @@
     min-height: 0;
     border: 1px solid #2a2a2a;
     border-top: none;
-    /* Only round the bottom corners — top corners stay flat to avoid
-       overlapping the timeline ruler directly above */
-    border-radius: 0 0 var(--track-lane-radius) var(--track-lane-radius);
+    border-radius: var(--track-lane-radius);
     background: #121212;
     overflow: auto;
   }
